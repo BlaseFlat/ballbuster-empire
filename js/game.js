@@ -149,9 +149,6 @@
     btn.addEventListener("click", () => playRps(btn.dataset.choice));
   });
 
-  $("#btn-victory-ok").addEventListener("click", () => {
-    showScreen("campus");
-  });
 
   // ——— Campus ———
   function tryInteract() {
