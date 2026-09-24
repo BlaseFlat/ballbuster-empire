@@ -83,13 +83,16 @@
 
   const campusCanvas = $("#campus-canvas");
   const combatCanvas = $("#combat-canvas");
-  const cctx = campusCanvas.getContext("2d");
-  const xctx = combatCanvas.getContext("2d");
+  const cctx = campusCanvas && campusCanvas.getContext("2d");
+  const xctx = combatCanvas && combatCanvas.getContext("2d");
+  if (!cctx || !xctx) {
+    console.error("[Боллбастер] canvas missing");
+  }
 
   function showScreen(name) {
     STATE.screen = name;
-    Object.values(screens).forEach((el) => el.classList.remove("active"));
-    screens[name].classList.add("active");
+    Object.values(screens).forEach((el) => el && el.classList.remove("active"));
+    if (screens[name]) screens[name].classList.add("active");
   }
 
   function setRep(n) {
@@ -116,24 +119,31 @@
     STATE.keys[e.code] = false;
   });
 
-  // ——— Screens wiring ———
-  $("#btn-start").addEventListener("click", () => {
+  // ——— Screens wiring (null-safe) ———
+  function goCampus() {
     player.x = 160;
     player.y = 300;
     showScreen("campus");
-  });
-  $("#btn-to-menu").addEventListener("click", () => showScreen("menu"));
+  }
+  window.__bbStart = goCampus;
 
-  $("#btn-fight").addEventListener("click", () => startCombat(STATE.nearNpc, false));
-  $("#btn-roshambo").addEventListener("click", () => openRoshambo("encounter"));
-  $("#btn-leave").addEventListener("click", () => {
+  function on(id, ev, fn) {
+    const el = typeof id === "string" && id.startsWith(".") ? null : $(id);
+    if (el) el.addEventListener(ev, fn);
+  }
+  const startBtn = $("#btn-start");
+  if (startBtn) startBtn.addEventListener("click", goCampus);
+  on("#btn-to-menu", "click", () => showScreen("menu"));
+  on("#btn-fight", "click", () => startCombat(STATE.nearNpc, false));
+  on("#btn-roshambo", "click", () => openRoshambo("encounter"));
+  on("#btn-leave", "click", () => {
     STATE.nearNpc = null;
     showScreen("campus");
   });
-
-  $("#btn-kick").addEventListener("click", () => doMove("kick"));
-  $("#btn-knee").addEventListener("click", () => doMove("knee"));
-  $("#btn-combat-roshambo").addEventListener("click", () => openRoshambo("combat"));
+  on("#btn-kick", "click", () => doMove("kick"));
+  on("#btn-knee", "click", () => doMove("knee"));
+  on("#btn-combat-roshambo", "click", () => openRoshambo("combat"));
+  on("#btn-victory-ok", "click", () => showScreen("campus"));
 
   $$(".btn.rps").forEach((btn) => {
     btn.addEventListener("click", () => playRps(btn.dataset.choice));
