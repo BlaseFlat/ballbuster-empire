@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Боллбастер: Империя паха</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- MAIN MENU -->
+    <section id="screen-menu" class="screen active">
+      <div class="menu-panel">
+        <p class="age-badge">21+</p>
+        <h1>Боллбастер</h1>
+        <h2 class="subtitle">Империя паха</h2>
+        <p class="tagline">Фаза 1 · Кампус · Русана бьёт туда, куда больнее</p>
+        <button id="btn-start" class="btn primary">Начать</button>
+        <p class="age-note">Только для взрослых 21+. Жёсткий контент: удары в пах, доминирование, сдача.</p>
+        <p class="controls-hint">Управление: WASD / стрелки · E — стычка · J / 1 — ап-кик · K / 2 — колено · R — рошамбо</p>
+      </div>
+    </section>
+
+    <!-- CAMPUS HUB -->
+    <section id="screen-campus" class="screen">
+      <header class="hud">
+        <div class="hud-left">
+          <span class="hud-title">Кампус</span>
+          <span class="hud-rep">Репутация: <b id="rep-value">0</b></span>
+          <span class="hud-trophies">Побед: <b id="trophy-value">0</b></span>
+        </div>
+        <div class="hud-right">
+          <span id="interact-hint" class="hint hidden">[E] Стычка</span>
+          <button id="btn-menu" class="btn ghost small">Меню</button>
+        </div>
+      </header>
+      <canvas id="campus-canvas" width="960" height="540"></canvas>
+      <footer class="footer-bar">
+        <span>WASD / стрелки — ходьба · подойди к парню и нажми E</span>
+      </footer>
+    </section>
+
+    <!-- COMBAT -->
+    <section id="screen-combat" class="screen">
+      <header class="hud combat-hud">
+        <div class="hud-left">
+          <span class="hud-title" id="combat-npc-name">Стычка</span>
+          <span>Хиты: <b id="hit-count">0</b></span>
+          <span>Комбо: <b id="combo-mult">×1</b></span>
+          <span>Стейт: <b id="guy-state-label">idle</b></span>
+        </div>
+        <div class="hud-right">
+          <button id="btn-roshambo" class="btn gold small">Рошамбо (R)</button>
+          <button id="btn-flee" class="btn ghost small">Уйти</button>
+        </div>
+      </header>
+      <canvas id="combat-canvas" width="960" height="480"></canvas>
+      <div class="combat-log" id="combat-log"></div>
+      <footer class="footer-bar combat-controls">
+        <button id="btn-kick" class="btn primary">Ап-кик (J / 1)</button>
+        <button id="btn-knee" class="btn primary">Колено (K / 2)</button>
+        <span class="soft-hint">Цель: soft-zone (пах). Чистый = +1 Hit · промах/hard = 0</span>
+      </footer>
+    </section>
+
+    <!-- ROSHAMBO OVERLAY -->
+    <div id="roshambo-overlay" class="overlay hidden">
+      <div class="overlay-panel">
+        <h2>Рошамбо</h2>
+        <p class="ros-sub">Лучшая из 3 · победа = гарантированный чистый удар · поражение = flinch-контратака</p>
+        <div class="ros-score">
+          <span>Ты: <b id="ros-you">0</b></span>
+          <span>Он: <b id="ros-him">0</b></span>
+          <span>Раунд <b id="ros-round">1</b>/3</span>
+        </div>
+        <p id="ros-status" class="ros-status">Выбери:</p>
+        <div class="ros-choices">
+          <button class="btn primary ros-pick" data-pick="rock">✊ Камень</button>
+          <button class="btn primary ros-pick" data-pick="paper">✋ Бумага</button>
+          <button class="btn primary ros-pick" data-pick="scissors">✌️ Ножницы</button>
+        </div>
+        <button id="btn-ros-close" class="btn ghost small" style="margin-top:1rem">Закрыть</button>
+      </div>
+    </div>
+
+    <!-- VICTORY OVERLAY -->
+    <div id="victory-overlay" class="overlay hidden">
+      <div class="overlay-panel">
+        <h2>Сдался</h2>
+        <p id="victory-text" class="victory-text"></p>
+        <p class="rep-gain">Репутация +<span id="rep-gain">8</span></p>
+        <button id="btn-victory-ok" class="btn primary">На кампус</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
