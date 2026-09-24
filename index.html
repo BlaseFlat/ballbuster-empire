@@ -1,99 +1,120 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Боллбастер: Империя паха</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div id="app">
-    <!-- MAIN MENU -->
     <section id="screen-menu" class="screen active">
-      <div class="menu-panel">
+      <div class="menu-bg"></div>
+      <div class="menu-card">
         <p class="age-badge">21+</p>
-        <h1>Боллбастер</h1>
+        <h1 class="title">БОЛЛБАСТЕР</h1>
         <h2 class="subtitle">Империя паха</h2>
-        <p class="tagline">Фаза 1 · Кампус · Русана бьёт туда, куда больнее</p>
-        <button id="btn-start" class="btn primary">Начать</button>
-        <p class="age-note">Только для взрослых 21+. Жёсткий контент: удары в пах, доминирование, сдача.</p>
-        <p class="controls-hint">Управление: WASD / стрелки · E — стычка · J / 1 — ап-кик · K / 2 — колено · R — рошамбо</p>
+        <p class="tagline">Русана vs парни кампуса · Фаза 1</p>
+        <button id="btn-start" class="btn primary">НАЧАТЬ</button>
+        <p class="disclaimer">
+          Только для взрослых 21+. Жёсткий тон, удары в пах, доминирование.
+          Все персонажи совершеннолетние.
+        </p>
+        <p class="controls-hint">Управление: WASD / стрелки · E — взаимодействие · мышь в мини-играх</p>
       </div>
     </section>
 
-    <!-- CAMPUS HUB -->
     <section id="screen-campus" class="screen">
-      <header class="hud">
+      <div class="hud top">
         <div class="hud-left">
-          <span class="hud-title">Кампус</span>
-          <span class="hud-rep">Репутация: <b id="rep-value">0</b></span>
-          <span class="hud-trophies">Побед: <b id="trophy-value">0</b></span>
+          <span class="hud-label">Кампус</span>
+          <span id="rep-display" class="hud-stat">Репутация: 0</span>
         </div>
         <div class="hud-right">
-          <span id="interact-hint" class="hint hidden">[E] Стычка</span>
-          <button id="btn-menu" class="btn ghost small">Меню</button>
+          <span id="hint-display" class="hud-hint">Подойди к парню и нажми E</span>
         </div>
-      </header>
+      </div>
       <canvas id="campus-canvas" width="960" height="540"></canvas>
-      <footer class="footer-bar">
-        <span>WASD / стрелки — ходьба · подойди к парню и нажми E</span>
-      </footer>
+      <div class="hud bottom">
+        <span>WASD / стрелки — ходьба · E — стычка</span>
+        <button id="btn-to-menu" class="btn tiny">Меню</button>
+      </div>
     </section>
 
-    <!-- COMBAT -->
+    <section id="screen-encounter" class="screen">
+      <div class="panel encounter-panel">
+        <h2 id="enc-title">Стычка</h2>
+        <p id="enc-desc" class="enc-text"></p>
+        <div class="enc-actions">
+          <button id="btn-fight" class="btn primary">Ударить в пах</button>
+          <button id="btn-roshambo" class="btn secondary">Рошамбо (лучшая из 3)</button>
+          <button id="btn-leave" class="btn ghost">Уйти</button>
+        </div>
+      </div>
+    </section>
+
     <section id="screen-combat" class="screen">
-      <header class="hud combat-hud">
-        <div class="hud-left">
-          <span class="hud-title" id="combat-npc-name">Стычка</span>
-          <span>Хиты: <b id="hit-count">0</b></span>
-          <span>Комбо: <b id="combo-mult">×1</b></span>
-          <span>Стейт: <b id="guy-state-label">idle</b></span>
+      <div class="hud top combat-hud">
+        <div>
+          <span id="combat-guy-name" class="hud-label">Парень</span>
+          <span id="combat-state" class="hud-stat">стейт: idle</span>
         </div>
-        <div class="hud-right">
-          <button id="btn-roshambo" class="btn gold small">Рошамбо (R)</button>
-          <button id="btn-flee" class="btn ghost small">Уйти</button>
+        <div>
+          <span id="combat-hits" class="hud-stat">Hits: 0</span>
+          <span id="combat-combo" class="hud-stat">Комбо: ×1</span>
+          <span id="combat-score" class="hud-stat">Очки: 0</span>
         </div>
-      </header>
+      </div>
       <canvas id="combat-canvas" width="960" height="480"></canvas>
-      <div class="combat-log" id="combat-log"></div>
-      <footer class="footer-bar combat-controls">
-        <button id="btn-kick" class="btn primary">Ап-кик (J / 1)</button>
-        <button id="btn-knee" class="btn primary">Колено (K / 2)</button>
-        <span class="soft-hint">Цель: soft-zone (пах). Чистый = +1 Hit · промах/hard = 0</span>
-      </footer>
+      <div class="combat-ui">
+        <div class="move-btns">
+          <button id="btn-kick" class="btn move" title="rus_kick_up">
+            <span class="move-key">1 / J</span>
+            <span class="move-name">Ап-кик</span>
+            <span class="move-tier">тир 1 · soft</span>
+          </button>
+          <button id="btn-knee" class="btn move" title="rus_knee">
+            <span class="move-key">2 / K</span>
+            <span class="move-name">Колено</span>
+            <span class="move-tier">тир 1 · soft</span>
+          </button>
+          <button id="btn-combat-roshambo" class="btn move secondary">
+            <span class="move-key">R</span>
+            <span class="move-name">Рошамбо</span>
+            <span class="move-tier">гарант. чистый</span>
+          </button>
+        </div>
+        <p id="combat-log" class="combat-log">Выбери удар. Цель — soft-zone паха.</p>
+      </div>
     </section>
 
-    <!-- ROSHAMBO OVERLAY -->
-    <div id="roshambo-overlay" class="overlay hidden">
-      <div class="overlay-panel">
+    <section id="screen-roshambo" class="screen">
+      <div class="panel roshambo-panel">
         <h2>Рошамбо</h2>
-        <p class="ros-sub">Лучшая из 3 · победа = гарантированный чистый удар · поражение = flinch-контратака</p>
-        <div class="ros-score">
-          <span>Ты: <b id="ros-you">0</b></span>
-          <span>Он: <b id="ros-him">0</b></span>
-          <span>Раунд <b id="ros-round">1</b>/3</span>
+        <p class="enc-text">Лучшая из 3. Победа = гарантированный чистый удар. Проигрыш = он отпрыгивает (флинч-контра, без урона тебе).</p>
+        <div class="rps-score">
+          <span>Ты: <b id="rps-you">0</b></span>
+          <span>Он: <b id="rps-him">0</b></span>
+          <span>Раунд <b id="rps-round">1</b>/3</span>
         </div>
-        <p id="ros-status" class="ros-status">Выбери:</p>
-        <div class="ros-choices">
-          <button class="btn primary ros-pick" data-pick="rock">✊ Камень</button>
-          <button class="btn primary ros-pick" data-pick="paper">✋ Бумага</button>
-          <button class="btn primary ros-pick" data-pick="scissors">✌️ Ножницы</button>
+        <div id="rps-result" class="rps-result">Выбери жест</div>
+        <div class="rps-choices">
+          <button class="btn rps" data-choice="rock">✊ Камень</button>
+          <button class="btn rps" data-choice="paper">✋ Бумага</button>
+          <button class="btn rps" data-choice="scissors">✌️ Ножницы</button>
         </div>
-        <button id="btn-ros-close" class="btn ghost small" style="margin-top:1rem">Закрыть</button>
       </div>
-    </div>
+    </section>
 
-    <!-- VICTORY OVERLAY -->
-    <div id="victory-overlay" class="overlay hidden">
-      <div class="overlay-panel">
-        <h2>Сдался</h2>
-        <p id="victory-text" class="victory-text"></p>
-        <p class="rep-gain">Репутация +<span id="rep-gain">8</span></p>
-        <button id="btn-victory-ok" class="btn primary">На кампус</button>
+    <section id="screen-victory" class="screen">
+      <div class="panel victory-panel">
+        <h2>СДАЧА</h2>
+        <p id="victory-text" class="enc-text"></p>
+        <p id="victory-stats" class="enc-text"></p>
+        <button id="btn-victory-ok" class="btn primary">Вернуться в кампус</button>
       </div>
-    </div>
+    </section>
   </div>
-  <script type="module" src="js/main.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>

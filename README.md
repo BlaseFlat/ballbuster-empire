@@ -11,8 +11,6 @@ python3 -m http.server 8080
 
 Open http://localhost:8080/
 
-Or any static server that serves this folder (itch.io HTML zip works the same).
-
 ## Controls
 
 | Context | Keys |
@@ -23,28 +21,20 @@ Or any static server that serves this folder (itch.io HTML zip works the same).
 
 ## Phase 1 contents
 
-1. Main menu — title «Боллбастер: Империя паха», Start, 21+ note  
-2. Campus hub — top-down canvas, Русана walks, 2 male NPCs (Дима 22, Артём 21)  
-3. **E** near NPC → encounter panel  
-4. Combat — soft-zone groin hits, guy states `idle → flinch → double_over → knees → floor → tap`  
-5. Scoring — clean +1 Hit; miss/hard = 0; 3 cleans ≤1.5s pause → combo ×1.5; state points; swell ×1.25 after 2 cleans  
-6. Roshambo best of 3 — win = guaranteed clean; lose = flinch-counter, no damage to Rusana  
-7. Victory → campus + reputation counter  
+1. Main menu — «Боллбастер: Империя паха», Start, 21+ note
+2. Campus hub — top-down canvas, Русана, 2 NPCs (Дима 22, Артём 21)
+3. **E** near NPC → encounter
+4. Combat — soft-zone hits, states idle→flinch→double_over→knees→floor→tap
+5. Scoring — clean +1 Hit; miss/hard 0; 3 cleans ≤1.5s → ×1.5; state points; swell ×1.25
+6. Roshambo best of 3 — win = guaranteed clean; lose = flinch-counter (no damage to Rusana)
+7. Victory → campus + reputation
 
-## itch.io upload
+## itch.io
 
-Use `dist/Ballbuster_web_phase1.zip` — `index.html` is at the zip root.
-
-This project → Kind of project: **HTML** → upload the zip.
+Upload `dist/Ballbuster_web_phase1.zip` (HTML project; `index.html` at zip root).
 
 ## Files
 
-```
-index.html
-css/style.css
-js/game.js
-README.md
-dist/Ballbuster_web_phase1.zip
-```
+`index.html` · `css/style.css` · `js/game.js` · `README.md` · `dist/Ballbuster_web_phase1.zip`
 
-Design reference: `../ballbuster-godot/docs/DESIGN_v1.md` (Phase 1 only).
+Design: `../ballbuster-godot/docs/DESIGN_v1.md` (Phase 1 only).
