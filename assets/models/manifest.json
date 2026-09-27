@@ -1,0 +1,29 @@
+{
+  "version": 3,
+  "synced": "2026-09-27T17:03:50.193Z",
+  "contact": true,
+  "meta": true,
+  "rusana": {
+    "bytes": 1888204,
+    "clips": [
+      "rus_idle",
+      "rus_kick_up",
+      "rus_knee",
+      "rus_victory",
+      "rus_walk"
+    ]
+  },
+  "guy": {
+    "bytes": 1880000,
+    "clips": [
+      "double_over",
+      "flinch",
+      "floor",
+      "getup",
+      "hurt",
+      "idle",
+      "knees",
+      "tap"
+    ]
+  }
+}

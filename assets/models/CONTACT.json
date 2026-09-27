@@ -1,0 +1,130 @@
+{
+ "fps": 30,
+ "units": "meters; three.js / glTF Y-up coordinates",
+ "rest_facing": "Both GLBs face +Z at rest (glTF forward). Rusana's root/origin stays at her feet; all strike motion is in-place (no root drift at end of clip).",
+ "placement": {
+  "note": "Same placement for both strikes, so the fight can start either one without repositioning. Put Rusana at her fight spot; put the guy DISTANCE meters in front of her along her facing, turned 180 deg to face her. Both roots on the floor (y=0), no lateral offset.",
+  "distance_m": 0.74,
+  "lateral_offset_m": 0.0,
+  "guy_yaw_relative_to_rusana_deg": 180,
+  "example_threejs": "rus.position.set(0,0,0); rus.rotation.y = 0; guy.position.set(0,0,0.74); guy.rotation.y = Math.PI;",
+  "general": "guy.position = rus.position + forward(rus.rotation.y) * 0.74; guy.rotation.y = rus.rotation.y + Math.PI"
+ },
+ "guy_sync": "The contact was fit against the guy's 'idle' pose at t=0 before the hit and 'flinch' started exactly on the contact frame. Recommended: when a strike starts, crossfade guy to 'idle' reset to t=0 (<=0.15 s fade); at contact_time play 'flinch' from t=0 with a very short fade (<=0.05 s), then chain double_over/knees/floor/tap per scoring. Hit-stop: freeze both mixers ~0.1 s right at contact_time.",
+ "kick_up": {
+  "clip": "rus_kick_up",
+  "duration_s": 1.2,
+  "contact_frame": 15,
+  "contact_time_s": 0.5,
+  "contact_window_s": [
+   0.467,
+   0.633
+  ],
+  "peak_frame": 17,
+  "peak_time_s": 0.567,
+  "contact_point_m": "instep/shin meets groin at ~0.80 m height, centered between his thighs",
+  "rusana_crossfade_in_s": 0.1,
+  "guy_reaction": "flinch at 0.5 s"
+ },
+ "knee": {
+  "clip": "rus_knee",
+  "duration_s": 1.133,
+  "contact_frame": 12,
+  "contact_time_s": 0.4,
+  "contact_window_s": [
+   0.4,
+   0.6
+  ],
+  "peak_frame": 15,
+  "peak_time_s": 0.5,
+  "contact_point_m": "right kneecap into groin at ~0.84-0.86 m height; her hands clinch his shoulders",
+  "rusana_crossfade_in_s": 0.12,
+  "note": "Frame 0 is already stepped into the clinch (she steps forward ~0.2 m in pose, root stays put), so a 0.12 s crossfade from rus_idle is recommended.",
+  "guy_reaction": "flinch at 0.4 s"
+ },
+ "walk": {
+  "clip": "rus_walk",
+  "in_place": true,
+  "cycle_s": 1.067,
+  "stride_m": 0.83,
+  "speed_mps_no_foot_slide": 0.78,
+  "note": "Scale mixer timeScale = moveSpeed / 0.78 for other speeds."
+ },
+ "clips": {
+  "rusana.glb": {
+   "rus_idle": [
+    2.133,
+    "loop"
+   ],
+   "rus_walk": [
+    1.067,
+    "loop"
+   ],
+   "rus_kick_up": [
+    1.2,
+    "once"
+   ],
+   "rus_knee": [
+    1.133,
+    "once"
+   ],
+   "rus_victory": [
+    2.8,
+    "once"
+   ]
+  },
+  "guy.glb": {
+   "idle": [
+    1.733,
+    "loop"
+   ],
+   "flinch": [
+    0.6,
+    "once"
+   ],
+   "double_over": [
+    1.0,
+    "once, holds last pose"
+   ],
+   "knees": [
+    1.0,
+    "once, holds last pose"
+   ],
+   "floor": [
+    1.467,
+    "loop"
+   ],
+   "tap": [
+    1.133,
+    "once"
+   ],
+   "hurt": [
+    0.933,
+    "loop, extra: hunched pain idle after double_over"
+   ],
+   "getup": [
+    1.0,
+    "once, extra: knees -> standing"
+   ]
+  }
+ },
+ "morph_targets": {
+  "Rusana_body": [
+   "cold",
+   "effort",
+   "smirk",
+   "blink"
+  ],
+  "Guy_body": [
+   "pain",
+   "agony",
+   "shock",
+   "smug",
+   "blink"
+  ],
+  "note": "Expression weights are keyed inside every clip (weights channel on the *_body node), so AnimationMixer drives faces automatically."
+ },
+ "loading": "Meshopt-compressed + WebP textures: GLTFLoader needs loader.setMeshoptDecoder(MeshoptDecoder) (three/examples/jsm/libs/meshopt_decoder.module.js).",
+ "outfit_masking": "Body mesh carries a custom vertex attribute _ZONE (three.js: geometry.attributes._zone, RGBA zone codes; NOT used as vertex color) (see out/*_masks.json) for hiding skin under clothes if outfits are swapped.",
+ "playback": "Clips marked 'once' must be played with action.setLoop(THREE.LoopOnce) + clampWhenFinished=true (double_over / knees / tap hold their last pose). Loop clips: rus_idle, rus_walk, idle, floor, hurt. Each clip's glTF extras also carry {loop, fps, frames, duration}."
+}
