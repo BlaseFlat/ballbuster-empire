@@ -152,7 +152,7 @@ export function buildGym(scene, tex, renderer) {
       root.add(g);
       const s = new THREE.SpotLight(0xffb870, i === 1 ? 160 : 110, 0, 0.82, 0.7, 2);
       s.position.set(x, lampY - 0.05, z); s.target.position.set(x, 0, z);
-      if (i === 1) { s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0004; s.shadow.normalBias = 0.02; s.shadow.camera.near = 0.5; s.shadow.camera.far = 8; }
+      if (false) { s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0004; s.shadow.normalBias = 0.02; s.shadow.camera.near = 0.5; s.shadow.camera.far = 8; }
       root.add(s, s.target); lamps.push(s);
     });
   }
@@ -448,6 +448,7 @@ export function buildGym(scene, tex, renderer) {
     const handMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
     const hh = new THREE.Mesh(new THREE.PlaneGeometry(0.03, 0.18), handMat); hh.geometry.translate(0, 0.08, 0); hh.position.set(6.5, 4.0, HZ - 0.035); hh.rotation.y = Math.PI; root.add(hh);
     const mh = new THREE.Mesh(new THREE.PlaneGeometry(0.02, 0.27), handMat); mh.geometry.translate(0, 0.12, 0); mh.position.set(6.5, 4.0, HZ - 0.036); mh.rotation.y = Math.PI; root.add(mh);
+    hh.userData.dynamic = mh.userData.dynamic = true;
     updaters.push(() => { const d = new Date(); hh.rotation.z = (d.getHours() % 12 + d.getMinutes() / 60) / 12 * Math.PI * 2; mh.rotation.z = (d.getMinutes() / 60) * Math.PI * 2; });
   }
 
@@ -490,6 +491,8 @@ export function buildGym(scene, tex, renderer) {
     });
   }
 
+  mergeStatic(root);
+
   // world bounds collider (inner walls)
   const bounds = { x0: -HX + 0.35, x1: HX - 0.35, z0: -HZ + 0.35, z1: HZ - 0.35 };
 
@@ -497,6 +500,35 @@ export function buildGym(scene, tex, renderer) {
     root, colliders, bounds, bags, lamps, sunDir, M,
     update(t, dt) { for (const u of updaters) u(t, dt); },
   };
+}
+
+// Merge static single-material opaque meshes that are direct children of root, grouped by
+// material + shadow flags → far fewer draw calls (and shadow-pass calls).
+function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const groups = new Map();
+  for (const o of [...root.children]) {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.dynamic || Array.isArray(o.material) || o.material.transparent || o.children.length) continue;
+    const g = o.geometry; if (!g.index) continue;
+    const sig = Object.keys(g.attributes).sort().join(',');
+    const key = `${o.material.uuid}|${o.castShadow}|${o.receiveShadow}|${sig}|${o.renderOrder}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(o);
+  }
+  let before = 0, after = 0;
+  for (const list of groups.values()) {
+    before += list.length;
+    if (list.length < 2) { after++; continue; }
+    const geos = list.map((o) => { const c = o.geometry.clone(); c.applyMatrix4(o.matrixWorld); return c; });
+    const merged = mergeGeometries(geos, false);
+    if (!merged) { after += list.length; continue; }
+    const m = new THREE.Mesh(merged, list[0].material);
+    m.castShadow = list[0].castShadow; m.receiveShadow = list[0].receiveShadow; m.renderOrder = list[0].renderOrder;
+    list.forEach((o) => root.remove(o));
+    geos.forEach((g) => g.dispose());
+    root.add(m); after++;
+  }
+  console.log(`[bb] gym static meshes merged: ${before} → ${after}`);
 }
 
 // Push a circle (x,z,r) out of AABBs & keep in bounds. Returns corrected {x,z}.

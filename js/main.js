@@ -454,6 +454,7 @@ function guyReact(guy, prev, next, clean, move, ci) {
         const bare = x.name.replace(/^guy_/, '');
         if (STATE_CLIPS.has(bare)) { stateAt = x.at; continue; }       // scoring decides the state clip
         if (guy.has(x.name)) push(x.at, x.name, !!x.loop, 0.05);
+        else if (/flinch/.test(x.name)) push(x.at, 'guy_flinch', false, 0.05);   // e.g. flinch_knee not in this GLB yet
       }
     } else {
       push(0.06, flinch, false, 0.04);
