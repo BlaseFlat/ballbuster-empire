@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Боллбастер: Империя паха</title>
+  <link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div id="app">
+    <section id="screen-menu" class="screen active">
+      <div class="menu-bg"></div>
+      <div class="menu-card">
+        <p class="age-badge">21+</p>
+        <h1 class="title">БОЛЛБАСТЕР</h1>
+        <h2 class="subtitle">Империя паха</h2>
+        <p class="tagline">Русана vs парни кампуса · Фаза 1</p>
+        <button type="button" id="btn-start" class="btn primary" onclick="window.__bbStart&&window.__bbStart()">НАЧАТЬ</button>
+        <p class="disclaimer">
+          Только для взрослых 21+. Жёсткий тон, удары в пах, доминирование.
+          Все персонажи совершеннолетние.
+        </p>
+        <p class="controls-hint">Управление: WASD / стрелки · E — взаимодействие · мышь в мини-играх</p>
+      </div>
+    </section>
+
+    <section id="screen-campus" class="screen">
+      <div class="hud top">
+        <div class="hud-left">
+          <span class="hud-label">Кампус</span>
+          <span id="rep-display" class="hud-stat">Репутация: 0</span>
+        </div>
+        <div class="hud-right">
+          <span id="hint-display" class="hud-hint">Подойди к парню и нажми E</span>
+        </div>
+      </div>
+      <canvas id="campus-canvas" width="960" height="540"></canvas>
+      <div class="hud bottom">
+        <span>WASD / стрелки — ходьба · E — стычка</span>
+        <button id="btn-to-menu" class="btn tiny">Меню</button>
+      </div>
+    </section>
+
+    <section id="screen-encounter" class="screen">
+      <div class="panel encounter-panel">
+        <h2 id="enc-title">Стычка</h2>
+        <p id="enc-desc" class="enc-text"></p>
+        <div class="enc-actions">
+          <button id="btn-fight" class="btn primary">Ударить в пах</button>
+          <button id="btn-roshambo" class="btn secondary">Рошамбо (лучшая из 3)</button>
+          <button id="btn-leave" class="btn ghost">Уйти</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-combat" class="screen">
+      <div class="hud top combat-hud">
+        <div>
+          <span id="combat-guy-name" class="hud-label">Парень</span>
+          <span id="combat-state" class="hud-stat">стейт: idle</span>
+        </div>
+        <div>
+          <span id="combat-hits" class="hud-stat">Hits: 0</span>
+          <span id="combat-combo" class="hud-stat">Комбо: ×1</span>
+          <span id="combat-score" class="hud-stat">Очки: 0</span>
+        </div>
+      </div>
+      <canvas id="combat-canvas" width="960" height="480"></canvas>
+      <div class="combat-ui">
+        <div class="move-btns">
+          <button id="btn-kick" class="btn move" title="rus_kick_up">
+            <span class="move-key">1 / J</span>
+            <span class="move-name">Ап-кик</span>
+            <span class="move-tier">тир 1 · soft</span>
+          </button>
+          <button id="btn-knee" class="btn move" title="rus_knee">
+            <span class="move-key">2 / K</span>
+            <span class="move-name">Колено</span>
+            <span class="move-tier">тир 1 · soft</span>
+          </button>
+          <button id="btn-combat-roshambo" class="btn move secondary">
+            <span class="move-key">R</span>
+            <span class="move-name">Рошамбо</span>
+            <span class="move-tier">гарант. чистый</span>
+          </button>
+        </div>
+        <p id="combat-log" class="combat-log">Выбери удар. Цель — soft-zone паха.</p>
+      </div>
+    </section>
+
+    <section id="screen-roshambo" class="screen">
+      <div class="panel roshambo-panel">
+        <h2>Рошамбо</h2>
+        <p class="enc-text">Лучшая из 3. Победа = гарантированный чистый удар. Проигрыш = он отпрыгивает (флинч-контра, без урона тебе).</p>
+        <div class="rps-score">
+          <span>Ты: <b id="rps-you">0</b></span>
+          <span>Он: <b id="rps-him">0</b></span>
+          <span>Раунд <b id="rps-round">1</b>/3</span>
+        </div>
+        <div id="rps-result" class="rps-result">Выбери жест</div>
+        <div class="rps-choices">
+          <button class="btn rps" data-choice="rock">✊ Камень</button>
+          <button class="btn rps" data-choice="paper">✋ Бумага</button>
+          <button class="btn rps" data-choice="scissors">✌️ Ножницы</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-victory" class="screen">
+      <div class="panel victory-panel">
+        <h2>СДАЧА</h2>
+        <p id="victory-text" class="enc-text"></p>
+        <p id="victory-stats" class="enc-text"></p>
+        <button id="btn-victory-ok" class="btn primary">Вернуться в кампус</button>
+      </div>
+    </section>
+  </div>
+  <script src="js/game.js?v=3"></script>
+</body>
+</html>
