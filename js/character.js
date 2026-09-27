@@ -83,6 +83,8 @@ export class Character {
     const a = this.getAction(clip);
     if (this.current === a && !restart) { a.timeScale = timeScale; return a; }
     const prev = this.current;
+    if (this.stagger && this.stagger.action === a) { this.stagger = null; this.model.position.z = 0; }  // replaying double_over
+    this.playT = 0;
     a.reset();
     a.enabled = true;
     a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
@@ -126,6 +128,7 @@ export class Character {
   setExpr(obj) { this.baseExpr = obj || {}; }
 
   update(dt) {
+    this.playT = (this.playT || 0) + dt;
     this.mixer.update(dt);
     this.updateExpr(dt);
   }

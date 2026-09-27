@@ -17,6 +17,7 @@ export const CFG = {
   hitStop: 0.08,            // seconds; CONTACT.json hitstop_s overrides
   cancelAfterContact: 0.38, // s after contact when the next attack may interrupt recovery
   cleanChance: { kick: 0.82, knee: 0.9 },
+  staggerBack: 0.3,         // m, double_over root motion (CONTACT.json double_over_root_motion overrides)
 };
 
 export const GUYS = [

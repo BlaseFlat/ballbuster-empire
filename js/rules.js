@@ -47,5 +47,13 @@ export class Bout {
     if (finished) this.ended = true;
     return { clean: true, prev, next, gained, comboMult: this.comboMult, painMult, finished };
   }
+  // He is on the floor and taps out (DESIGN §4 «Победа: tap / floor+добивка / сдача»): tap state bonus, no extra Hit.
+  autoTap() {
+    if (this.guyState === 'tap') return 0;
+    this.guyState = 'tap';
+    this.score = Math.round((this.score + STATE_POINTS.tap) * 10) / 10;
+    this.ended = true;
+    return STATE_POINTS.tap;
+  }
   repGain() { return 10 + Math.floor(this.score); }
 }

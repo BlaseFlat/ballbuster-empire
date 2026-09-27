@@ -112,8 +112,8 @@ function parseSeq(seq) {
   return seq.map((x, i) => {
     if (typeof x === 'string') return { name: x, at: dflt[Math.min(i, 3)] };
     const name = x.clip || x.name || x.anim;
-    const at = x.at ?? x.t ?? x.start_s ?? x.time_s ?? x.time ?? x.from_s ?? (Array.isArray(x.window_s) ? x.window_s[0] : undefined) ?? dflt[Math.min(i, 3)];
-    return name ? { name, at, loop: x.loop } : null;
+    const at = x.start_rel_contact_s ?? x.at ?? x.t ?? x.start_s ?? x.time_s ?? x.time ?? x.from_s ?? (Array.isArray(x.window_s) ? x.window_s[0] : undefined) ?? dflt[Math.min(i, 3)];
+    return name ? { name, at, loop: x.loop, optional: !!x.optional } : null;
   }).filter(Boolean);
 }
 
@@ -149,18 +149,20 @@ function computeContact(contactJson, meta, rus) {
         const f = e.contact_frame ?? e.frame ?? (Array.isArray(e.frames) ? e.frames[0] : undefined);
         if (typeof t === 'number') base.time = t; else if (typeof f === 'number') base.time = f / fps;
         if (typeof e.rusana_crossfade_in_s === 'number') base.fadeIn = e.rusana_crossfade_in_s;
-        const hs = e.hitstop_s ?? e.hit_stop_s ?? cj.hitstop_s;
+        const hs = e.hitstop_s ?? e.hit_stop_s ?? cj.hitstop_s ?? (cj.hit_stop && cj.hit_stop.duration_s);
         if (typeof hs === 'number') base.hitStop = hs;
         const seq = e.guy_sequence || e.guy_clips || e.guy_timeline || e.reaction_sequence || (Array.isArray(e.guy_reaction) ? e.guy_reaction : null);
-        if (Array.isArray(seq)) base.seq = parseSeq(seq);
+        if (Array.isArray(seq)) { const all = parseSeq(seq); base.pre = all.filter((x) => x.at < 0); base.seq = all.filter((x) => x.at >= 0); }
         src = 'CONTACT.json';
       }
       const ep = (e && e.placement) || pl;
       // pelvis-to-pelvis distance (converted to root distance below) or root distance
       const pd = (e && (e.pelvis_distance_m ?? e.pelvis_to_pelvis_m)) ?? ep.pelvis_distance_m ?? ep.pelvis_to_pelvis_m;
       const d = (e && (e.distance_m ?? e.root_distance_m ?? e.distance ?? e.guy_distance)) ?? ep.distance_m ?? ep.distance;
-      if (typeof pd === 'number') { base.dist = Math.abs(pd); base.pelvisRef = true; }
-      else if (typeof d === 'number') { base.dist = Math.abs(d); base.pelvisRef = /pelvis/i.test(String(ep.reference || ep.note || (e && e.distance_ref) || '')) && !!(e && (e.distance_m !== undefined)); }
+      // prefer the root-to-root distance (what the engine sets); pelvis distance only if nothing else is given
+      if (typeof d === 'number') { base.dist = Math.abs(d); base.pelvisRef = /pelvis/i.test(String(ep.distance_is || (e && e.distance_is) || '')); }
+      else if (typeof pd === 'number') { base.dist = Math.abs(pd); base.pelvisRef = true; }
+      if (cj.double_over_root_motion && typeof cj.double_over_root_motion.stagger_back_m === 'number') CFG.staggerBack = cj.double_over_root_motion.stagger_back_m;
       const lat = ep.lateral_offset_m ?? (e && e.lateral_offset_m);
       if (typeof lat === 'number') base.side = lat;
       else {
@@ -356,8 +358,9 @@ function enterFight(guy) {
   const dir = new THREE.Vector3().subVectors(guy.group.position, rus.group.position).setY(0);
   if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
   dir.normalize();
+  guy.timeline = guy.timeline || []; guy.queue = guy.queue || [];
   const f = G.fight = {
-    guy, dir, bout: new Bout(guy.def), attack: null, queued: null, ended: false,
+    guy, dir, bout: new Bout(guy.def), attack: null, queued: null, ended: false, snapDur: 0.2, stepping: false,
     dist: G.contact.kick.dist, side: G.contact.kick.side || 0,
     rusFrom: rus.group.position.clone(), snapT: 0, victoryAt: 0,
   };
@@ -404,6 +407,11 @@ function pickCamSide(f) {
   return bestS;
 }
 
+const STANDING_CLIPS = new Set(['idle', 'hurt', 'stun']);
+function guyReady(g) {
+  return !g.timeline.length && !g.queue.length && STANDING_CLIPS.has(String(g.currentName).replace(/^guy_/, ''));
+}
+
 function attack(move) {
   const f = G.fight; if (!f || f.ended) return;
   const rus = G.rus;
@@ -412,17 +420,22 @@ function attack(move) {
     const canCancel = f.attack.contactDone && rus.time >= ci.time + CFG.cancelAfterContact;
     if (!canCancel) { f.queued = move; return; }
   }
+  // strikes are authored against a standing guy: wait until he has recovered (hurt / idle)
+  if (!guyReady(f.guy) || f.stepping) { f.queued = move; UI.text('#f-log', 'Ждёт, пока он выпрямится…'); return; }
   const ci = G.contact[move];
-  const clean = Math.random() < CFG.cleanChance[move];
-  const finishing = clean && f.bout.nextState === 'tap';
+  const clean = G.forceClean !== undefined ? G.forceClean : Math.random() < CFG.cleanChance[move];
+  const finishing = clean && f.bout.nextState === 'floor';   // floor → he taps out → victory
   f.attack = { move, ci, clean, finishing, contactDone: false, t0: G.time };
   f.queued = null;
-  f.dist = ci.dist; f.side = ci.side || 0; f.snapT = 0; f.rusFrom = rus.group.position.clone();
+  f.dist = ci.dist; f.side = ci.side || 0; f.snapT = 0; f.snapDur = 0.15; f.rusFrom = rus.group.position.clone();
   rus.queue = [];
   rus.play(ci.clip, { fade: ci.fadeIn ?? 0.1, loop: false });
-  // contact was fit against the guy's idle pose at t=0 → re-sync standing guys to idle
-  const g = f.guy;
-  if (f.bout.guyState === 'idle' || f.bout.guyState === 'flinch') { g.queue = []; g.timeline = []; g.play('guy_idle', { fade: 0.12 }); }
+  // guy sync: contact was fit against 'idle' (kick) / 'clinched' started together with rus_knee (knee)
+  const g = f.guy; g.queue = []; g.timeline = [];
+  const pre = (ci.pre || []).find((x) => !/idle/.test(x.name) && g.has(x.name));
+  if (pre) g.play(pre.name, { fade: 0.1, loop: false });
+  else if (move === 'knee' && g.has('clinched')) g.play('clinched', { fade: 0.1, loop: false });
+  else g.play('guy_idle', { fade: 0.12 });
   UI.text('#f-log', move === 'kick' ? 'Ап-кик снизу…' : 'Клинч — колено…');
 }
 
@@ -430,43 +443,67 @@ function guyClip(state) {
   return { idle: ['guy_idle', true], flinch: ['guy_hurt', true], double_over: ['guy_double_over', false], knees: ['guy_knees', false], floor: ['guy_floor', true], tap: ['guy_tap', false] }[state];
 }
 
-// Reaction timeline after contact (seconds; clock keeps running through hit-stop):
-//   0–hitStop freeze both · hitStop→0.25 flinch (flinch_knee for knee if present) · 0.25–0.45 stun beat (if clip)
-//   · ~0.5 state clip (hurt / double_over / knees / floor / tap). CONTACT.json guy_sequence overrides the beats.
-const STATE_CLIPS = new Set(['idle', 'hurt', 'double_over', 'knees', 'floor', 'tap']);
+// Reaction after contact. Timeline times are seconds after contact in *real* time (hit-stop included):
+//   0–0.06 freeze both · flinch / flinch_knee · double_over at clip time 0.40 (+hit-stop).
+// Then a finish-driven queue: double_over staggers him 0.30 m back → baked into his root (no pop),
+// knees / getup / floor / tap are authored in place from that spot, and he always recovers to a
+// standing 'hurt' loop before the next strike so it lines up. Floor = fight over (he taps out).
 function guyReact(guy, prev, next, clean, move, ci) {
   guy.queue = []; guy.timeline = []; guy.tl = 0;
   const hs = clean ? (ci.hitStop ?? CFG.hitStop) : 0;
-  const standing = prev === 'idle' || prev === 'flinch';
   const flinch = move === 'knee' && guy.has('flinch_knee') ? 'flinch_knee' : 'guy_flinch';
-  const push = (at, name, loop = false, fade = 0.08) => guy.timeline.push({ at: Math.max(at, hs), name, loop, fade });
+  const at = (t, name, loop = false, fade = 0.05) => guy.timeline.push({ at: t + hs, name, loop, fade });
+  const q = (o) => guy.queue.push(o);
+  const standClip = guy.has('guy_hurt') ? 'guy_hurt' : 'guy_idle';
+  let stateAt = 0.4;
+  if (ci.seq) { const d = ci.seq.find((x) => /double_over/.test(x.name)); if (d) stateAt = d.at; }
   if (!clean) {
-    if (standing) { push(0, flinch, false, 0.05); const [n, l] = guyClip(prev); push(0.35, n, l, 0.25); }
+    at(0, flinch, false, 0.05);
+    at(Math.min(stateAt, 0.4), prev === 'idle' ? 'guy_idle' : standClip, true, 0.25);
     return;
   }
-  const [n, l] = guyClip(next);
-  const stateName = next === 'flinch' ? (guy.has('guy_hurt') ? 'guy_hurt' : 'guy_idle') : n;
-  const stateLoop = next === 'flinch' ? true : l;
-  if (standing) {
-    let stateAt = 0.5;
-    if (ci.seq && ci.seq.length) {
-      for (const x of ci.seq) {
-        const bare = x.name.replace(/^guy_/, '');
-        if (STATE_CLIPS.has(bare)) { stateAt = x.at; continue; }       // scoring decides the state clip
-        if (guy.has(x.name)) push(x.at, x.name, !!x.loop, 0.05);
-        else if (/flinch/.test(x.name)) push(x.at, 'guy_flinch', false, 0.05);   // e.g. flinch_knee not in this GLB yet
-      }
-    } else {
-      push(0.06, flinch, false, 0.04);
-      if (guy.has('stun')) push(0.25, 'stun', false, 0.08);
-    }
-    push(stateAt, stateName, stateLoop, 0.18);
+  at(0, flinch, false, 0.04);
+  if (next === 'flinch') {
+    at(stateAt, standClip, true, 0.2);
   } else {
-    push(0.06, stateName, stateLoop, 0.14);
+    at(stateAt, 'guy_double_over', false, 0.05);     // flinch last frame == double_over f0
+    q({ bake: true });
+    if (next === 'double_over') {
+      q({ name: standClip, loop: true, fade: 0.35, hold: 0.3 });
+    } else if (next === 'knees') {
+      q({ name: 'guy_knees', loop: false, fade: 0.1 });
+      q({ name: 'guy_getup', loop: false, fade: 0.15, hold: 0.45 });
+      q({ name: standClip, loop: true, fade: 0.25 });
+    } else if (next === 'floor' || next === 'tap') {
+      q({ name: 'guy_knees', loop: false, fade: 0.1 });
+      q({ name: 'guy_floor', loop: true, fade: 0.25, hold: 0.15 });
+      q({ name: 'guy_tap', loop: false, fade: 0.2, hold: 0.7, onStart: () => tapOut() });
+      q({ name: 'guy_floor', loop: true, fade: 0.3 });
+    }
   }
-  if (next === 'tap') guy.queue.push({ name: 'guy_floor', loop: true, fade: 0.4 });
-  guy.timeline.sort((x, y) => x.at - y.at);
   guy.state = next;
+}
+
+// root-motion bake for double_over: move the object back along HIS facing and compensate the model
+// offset by the double_over action weight, so the pose never pops while it crossfades out.
+function bakeStagger(ch) {
+  const a = ch.current; if (!a || !/double_over/.test(ch.currentName)) return;
+  const d = CFG.staggerBack ?? 0.3;
+  ch.group.position.x -= Math.sin(ch.yaw) * d; ch.group.position.z -= Math.cos(ch.yaw) * d;
+  ch.stagger = { action: a, d };
+  ch.model.position.z = d;
+  const f = G.fight;
+  if (f && f.guy === ch && G.mode === 'fight') {       // Rusana closes the distance
+    f.rusFrom = G.rus.group.position.clone(); f.snapT = 0; f.snapDur = 0.5; f.stepping = true;
+    if (!f.attack) { const w = G.rus.play('rus_walk', { fade: 0.2, loop: true }); if (w && /walk/.test(G.rus.currentName)) w.timeScale = 0.75; }
+  }
+}
+
+function tapOut() {
+  const f = G.fight; if (!f) return;
+  f.bout.autoTap(); updateFightHud();
+  UI.text('#f-log', `${f.guy.def.name} тапает — сдаётся!`);
+  f.victoryAt = G.realTime + 1.4;
 }
 
 function strikePoint(move, out) {
@@ -489,9 +526,9 @@ function onContact(f) {
   const p = strikePoint(a.move, new THREE.Vector3());
   const scr = toScreen(p);
   if (res.clean) {
-    G.hitStopUntil = G.realTime + (a.ci.hitStop ?? CFG.hitStop) * (res.finished ? 1.25 : 1);
-    G.fx.impact(p, res.finished ? 1.6 : 1.0);
-    G.fx.popup(res.finished ? 'ДОБИВАНИЕ!' : 'ЧИСТЫЙ!', { x: scr.x, y: scr.y - 40 });
+    G.hitStopUntil = G.realTime + (a.ci.hitStop ?? CFG.hitStop);
+    G.fx.impact(p, a.finishing ? 1.6 : 1.0);
+    G.fx.popup(a.finishing || res.finished ? 'ДОБИВАНИЕ!' : 'ЧИСТЫЙ!', { x: scr.x, y: scr.y - 40 });
     G.fx.popup(`+${res.gained}`, { x: scr.x + 70, y: scr.y + 10 }, 'small');
     if (res.comboMult > 1) G.fx.popup(`КОМБО ×${res.comboMult}`, { x: scr.x - 90, y: scr.y + 30 }, 'small');
     UI.text('#f-log', `Чистый! ${STATE_RU[res.prev]} → ${STATE_RU[res.next]}` + (res.comboMult > 1 ? ` · комбо ×${res.comboMult}` : '') + (res.painMult > 1 ? ` · отёк ×${res.painMult}` : ''));
@@ -503,13 +540,16 @@ function onContact(f) {
   guyReact(f.guy, res.prev, res.next, res.clean, a.move, a.ci);
   updateFightHud();
   if (res.finished) { f.ended = true; f.victoryAt = G.realTime + 1.1; }
+  else if (res.clean && res.next === 'floor') f.ended = true;     // no more strikes; tapOut() → victory
 }
 
 function updateFight(dt) {
   const f = G.fight, rus = G.rus;
-  if (f.bout.tick(dt)) updateFightHud();
+  // combo clock only runs while the guy is strikeable (his scripted recovery is not a player pause)
+  if ((guyReady(f.guy) || f.attack) && f.bout.tick(dt)) updateFightHud();
   // position Rusana relative to the guy (snap/tween)
-  f.snapT = Math.min(1, f.snapT + dt / 0.15);
+  f.snapT = Math.min(1, f.snapT + dt / (f.snapDur || 0.15));
+  if (f.stepping && f.snapT >= 1) { f.stepping = false; if (!f.attack) rus.play('rus_idle', { fade: 0.25 }); }
   const gp = f.guy.group.position;
   const right = _v2.set(f.dir.z, 0, -f.dir.x);
   const want = _v1.copy(gp).addScaledVector(f.dir, -f.dist).addScaledVector(right, -f.side);
@@ -520,12 +560,13 @@ function updateFight(dt) {
     const t = rus.time;
     if (a.finishing && !a.slow && t >= a.ci.time - 0.28) { a.slow = true; G.slowUntil = G.realTime + 1.0; G.slowScale = 0.3; }
     if (!a.contactDone && t >= a.ci.time) onContact(f);
-    if (a.contactDone && f.queued && !f.ended && t >= a.ci.time + CFG.cancelAfterContact) { const q = f.queued; f.queued = null; attack(q); }
+    if (a.contactDone && f.queued && !f.ended && !f.stepping && guyReady(f.guy) && t >= a.ci.time + CFG.cancelAfterContact) { const q = f.queued; f.queued = null; attack(q); }
     else if (rus.finished) {
       f.attack = null;
-      if (!f.ended) { rus.play('rus_idle', { fade: 0.3 }); if (!f.queued) UI.text('#f-log', 'J / 1 — ап-кик · K / 2 — колено'); else { const q = f.queued; f.queued = null; attack(q); } }
+      if (!f.stepping) rus.play('rus_idle', { fade: 0.3 });
     }
   }
+  if (!f.attack && f.queued && !f.ended && guyReady(f.guy) && !f.stepping) { const q = f.queued; f.queued = null; attack(q); }
   if (f.ended && f.victoryAt && G.realTime >= f.victoryAt) { f.victoryAt = 0; startVictory(); }
 }
 
@@ -553,7 +594,7 @@ function updateCombatCamera(dt) {
 
 function leaveFight() {
   const f = G.fight; if (!f || f.ended) return;
-  f.guy.queue = []; f.guy.timeline = []; f.guy.state = 'idle'; f.guy.play('guy_idle', { fade: 0.4 }); f.guy.setExpr({ smug: 0.6 });
+  f.guy.queue = []; f.guy.timeline = []; f.guy.state = 'idle'; f.guy.stagger = null; f.guy.model.position.z = 0; f.guy.play('guy_idle', { fade: 0.4 }); f.guy.setExpr({ smug: 0.6 });
   G.rus.play('rus_idle', { fade: 0.3 });
   // step back a little
   G.rus.group.position.addScaledVector(f.dir, -0.4);
@@ -630,6 +671,7 @@ function frame() {
   const realDt = Math.min(clock.getDelta(), 1 / 20);
   G.realTime += realDt;
   if (G.mode === 'loading') { return; }
+  if (G.paused) { composer.render(0); return; }   // test hook: full freeze
   // time scale: hit-stop (freeze) > slow-mo > normal
   let ts = 1;
   if (G.realTime < G.hitStopUntil) ts = 0;
@@ -650,8 +692,20 @@ function frame() {
     if (ch.timeline && ch.timeline.length) {
       ch.tl += G.timeScale === 0 ? realDt : dt;
       while (ch.timeline.length && ch.tl >= ch.timeline[0].at) { const q = ch.timeline.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop }); }
-    } else if (ch.queue && ch.queue.length && ch.finished) {
-      const q = ch.queue.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop });
+    } else if (ch.queue && ch.queue.length) {
+      while (ch.queue.length && ch.queue[0].bake && ch.finished) { ch.queue.shift(); bakeStagger(ch); }
+      const q = ch.queue[0];
+      if (q && !q.bake) {
+        const a = ch.current, dur = a ? a.getClip().duration : 0;
+        const looping = a && a.loop !== THREE.LoopOnce;
+        const since = looping ? ch.playT : ch.playT - dur / Math.max(1e-3, Math.abs(a ? a.timeScale : 1));
+        if ((looping || ch.finished) && since >= (q.hold || 0)) { ch.queue.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop }); if (q.onStart) q.onStart(); }
+      }
+    }
+    if (ch.stagger) {   // keep the baked double_over offset glued to the action weight
+      const w = ch.stagger.action.enabled ? ch.stagger.action.getEffectiveWeight() : 0;
+      ch.model.position.z = ch.stagger.d * w;
+      if (w <= 1e-3) { ch.stagger = null; ch.model.position.z = 0; }
     }
     if (ch.blob) {
       const pv = ch.bones.pelvis ? ch.boneWorld('pelvis', _v1) : ch.group.position;
@@ -666,6 +720,7 @@ function frame() {
   camera.position.copy(G.cam.pos).add(G.fx.shakeOffset);
   camera.lookAt(G.cam.look);
   updateLabels();
+  if (G.onFrame) G.onFrame();
   renderer.info.reset();
   composer.render(realDt);
   if ((G.frameN = (G.frameN || 0) + 1) % 30 === 0) G.renderInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures, progs: renderer.info.programs.length };
