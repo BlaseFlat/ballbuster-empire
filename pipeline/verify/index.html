@@ -1,0 +1,32 @@
+<!doctype html><html><body style="margin:0;background:#333">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+const C = await (await fetch('/opt/CONTACT.json')).json();
+const r = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true}); r.setSize(900,900);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x3a3a40);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(2,4,3); dl.castShadow = true; sc.add(dl);
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(8,8), new THREE.MeshStandardMaterial({color:0x222226})); fl.rotation.x=-Math.PI/2; fl.receiveShadow=true; sc.add(fl);
+const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const [R, G] = await Promise.all([L.loadAsync('/opt/rusana.glb'), L.loadAsync('/opt/guy.glb')]);
+const rus = R.scene, guy = G.scene; sc.add(rus, guy);
+[rus,guy].forEach(s=>s.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}}));
+guy.position.set(0,0,C.placement.distance_m); guy.rotation.y = Math.PI;
+const mr = new THREE.AnimationMixer(rus), mg = new THREE.AnimationMixer(guy);
+const cam = new THREE.PerspectiveCamera(35,1,0.05,50);
+window.info = {rus: R.animations.map(a=>[a.name,+a.duration.toFixed(3)]), guy: G.animations.map(a=>[a.name,+a.duration.toFixed(3)])};
+window.pose = (rclip, rt, gclip, gt, az, dist) => {
+  mr.stopAllAction(); mg.stopAllAction();
+  const ra = mr.clipAction(THREE.AnimationClip.findByName(R.animations, rclip)); ra.setLoop(THREE.LoopOnce); ra.clampWhenFinished=true; ra.play(); mr.setTime(rt);
+  const ga = mg.clipAction(THREE.AnimationClip.findByName(G.animations, gclip)); ga.setLoop(THREE.LoopOnce); ga.clampWhenFinished=true; ga.play(); mg.setTime(gt);
+  const t = new THREE.Vector3(0,0.85,0.37), a = az*Math.PI/180;
+  cam.position.set(t.x + Math.sin(a)*dist, 1.0, t.z + Math.cos(a)*dist); cam.lookAt(t);
+  r.render(sc, cam); return true;
+};
+window.ready = true;
+</script></body></html>

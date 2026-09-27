@@ -1,0 +1,47 @@
+[gd_scene load_steps=3 format=3 uid="uid://npcballbuster01"]
+
+[ext_resource type="Script" path="res://scripts/npc.gd" id="1_npc"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_npc"]
+radius = 14.0
+height = 32.0
+
+[node name="NPC" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_npc")
+
+[node name="Highlight" type="Polygon2D" parent="."]
+visible = false
+z_index = -1
+color = Color(0.88, 0.11, 0.28, 0.35)
+polygon = PackedVector2Array(-22, -22, 22, -22, 22, 22, -22, 22)
+
+[node name="Body" type="Polygon2D" parent="."]
+color = Color(0.4, 0.55, 0.95, 1)
+polygon = PackedVector2Array(-12, -18, 12, -18, 14, 0, 12, 18, -12, 18, -14, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_npc")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -40.0
+offset_top = -42.0
+offset_right = 40.0
+offset_bottom = -22.0
+theme_override_colors/font_color = Color(0.95, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 14
+text = "NPC"
+horizontal_alignment = 1
+
+[node name="Prompt" type="Label" parent="."]
+visible = false
+offset_left = -50.0
+offset_top = 22.0
+offset_right = 50.0
+offset_bottom = 42.0
+theme_override_colors/font_color = Color(0.98, 0.75, 0.2, 1)
+theme_override_font_sizes/font_size = 12
+text = "[E] Стычка"
+horizontal_alignment = 1

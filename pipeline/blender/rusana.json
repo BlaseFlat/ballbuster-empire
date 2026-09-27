@@ -1,0 +1,172 @@
+{
+ "name": "Rusana",
+ "phenotype": {
+  "gender": 0.0,
+  "age": 0.5,
+  "muscle": 0.5,
+  "weight": 0.56,
+  "height": 0.35,
+  "proportions": 0.85,
+  "cupsize": 0.32,
+  "firmness": 0.75,
+  "race": {
+   "caucasian": 0.75,
+   "asian": 0.1,
+   "african": 0.15
+  }
+ },
+ "targets": {
+  "hip-scale-horiz-incr": 0.25,
+  "buttocks-volume-incr": 0.15,
+  "l-upperleg-fat-incr": 0.3,
+  "r-upperleg-fat-incr": 0.3,
+  "l-upperleg-muscle-incr": 0.3,
+  "r-upperleg-muscle-incr": 0.3,
+  "measure-thigh-circ-incr": 0.3,
+  "measure-waist-circ-decr": 0.25,
+  "measure-shoulder-dist-decr": 0.25,
+  "torso-muscle-pectoral-decr": 0.3,
+  "stomach-tone-decr": 0.2
+ },
+ "eyes": "high-poly.mhclo",
+ "eyebrows": "eyebrow010.mhclo",
+ "eyelashes": "eyelashes02.mhclo",
+ "teeth": "teeth_base.mhclo",
+ "hair": "rehmanpolanski_hair_bun_brown.mhclo",
+ "skin": "toigo_light_skin_female_bronze_with_makeup.mhmat",
+ "skin_tint": [
+  1.0,
+  0.9,
+  0.8,
+  1.0
+ ],
+ "hair_tint": [
+  0.55,
+  0.4,
+  0.3
+ ],
+ "clothes": [
+  "punkduck_sleeveless_crop_top.mhclo",
+  "punkduck_tennis_shoes.mhclo"
+ ],
+ "materials": {
+  "rehmanpolanski_hair_bun": {
+   "name": "M_hair",
+   "obj": "hair",
+   "tint": [
+    0.72,
+    0.5,
+    0.36
+   ],
+   "gamma": 1.05,
+   "rough": 0.45,
+   "alpha": true,
+   "size": 1024
+  },
+  "punkduck_sleeveless_crop_top": {
+   "name": "M_top",
+   "obj": "outfit_gym_top",
+   "tint": [
+    0.36,
+    0.035,
+    0.08
+   ],
+   "gamma": 1.25,
+   "rough": 0.75,
+   "size": 1024,
+   "sat": 0.0
+  },
+  "punkduck_tennis_shoes": {
+   "name": "M_shoes",
+   "obj": "outfit_gym_shoes",
+   "tint": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "rough": 0.5,
+   "size": 1024
+  }
+ },
+ "outfit_map": {
+  "punkduck_sleeveless_crop_top": "gym_top",
+  "punkduck_tennis_shoes": "gym_shoes"
+ },
+ "ponytail": {
+  "back_w": 1.3,
+  "tie_offset": [
+   0,
+   -0.005,
+   -0.005
+  ],
+  "length": 0.3,
+  "lift": 0.05,
+  "back": 0.06,
+  "spread": 0.028,
+  "mess": 0.01,
+  "strands": 150
+ },
+ "expressions": {
+  "cold": {
+   "eyebrows-left-down": 0.35,
+   "eyebrows-right-down": 0.35,
+   "eye-left-slit": 0.3,
+   "eye-right-slit": 0.3,
+   "mouth-compression": 0.25
+  },
+  "effort": {
+   "eyebrows-left-down": 0.8,
+   "eyebrows-right-down": 0.8,
+   "eye-left-slit": 0.6,
+   "eye-right-slit": 0.6,
+   "mouth-compression": 0.5,
+   "nose-left-elevation": 0.3,
+   "nose-right-elevation": 0.3
+  },
+  "smirk": {
+   "mouth-corner-puller": 0.45,
+   "eye-left-slit": 0.25,
+   "eye-right-slit": 0.25,
+   "eyebrows-left-down": 0.2,
+   "eyebrows-right-down": 0.2
+  },
+  "blink": {
+   "eye-left-closure": 1.0,
+   "eye-right-closure": 1.0
+  }
+ },
+ "height_m": 1.56,
+ "mask_json": "/workspace/bb3d/out/rusana_masks.json",
+ "out_blend": "/workspace/bb3d/out/rusana.blend",
+ "gen_clothes": [
+  {
+   "waist": 0.28,
+   "hem": 0.33,
+   "slit": 0.12,
+   "slit_w": 0.45,
+   "inner_drop": 0.0,
+   "offset": 0.005,
+   "thick": 0.003,
+   "band": 0.1,
+   "smooth": 4,
+   "color": [
+    0.018,
+    0.018,
+    0.02
+   ],
+   "band_color": [
+    0.05,
+    0.05,
+    0.055
+   ],
+   "min_ok": 3,
+   "obj": "outfit_gym_shorts",
+   "mat": "M_shorts"
+  }
+ ],
+ "zones": {
+  "gym_top": "top",
+  "gym_shorts": "bottom",
+  "gym_shoes": "feet"
+ }
+}

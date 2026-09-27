@@ -1,0 +1,339 @@
+{
+ "cats": {
+  "v_flinch": [
+   "v_flinch_1",
+   "v_flinch_2",
+   "v_flinch_3",
+   "v_flinch_4",
+   "v_flinch_5",
+   "v_flinch_6",
+   "v_flinch_7",
+   "v_flinch_8"
+  ],
+  "v_groan": [
+   "v_groan_1",
+   "v_groan_2",
+   "v_groan_3",
+   "v_groan_4",
+   "v_groan_5",
+   "v_groan_6",
+   "v_groan_7"
+  ],
+  "v_whimper": [
+   "v_whimper_1",
+   "v_whimper_2",
+   "v_whimper_3",
+   "v_whimper_4",
+   "v_whimper_5",
+   "v_whimper_6"
+  ],
+  "v_scream": [
+   "v_scream_1",
+   "v_scream_2",
+   "v_scream_3",
+   "v_scream_4",
+   "v_scream_5"
+  ],
+  "v_floor": [
+   "v_floor_1",
+   "v_floor_2",
+   "v_floor_3",
+   "v_floor_4",
+   "v_floor_5"
+  ],
+  "v_tap": [
+   "v_tap_1",
+   "v_tap_2",
+   "v_tap_3",
+   "v_tap_4",
+   "v_tap_5"
+  ],
+  "imp_body": [
+   "imp_body_1",
+   "imp_body_2",
+   "imp_body_3",
+   "imp_body_4",
+   "imp_body_5"
+  ],
+  "imp_punch": [
+   "imp_punch_1",
+   "imp_punch_2",
+   "imp_punch_3",
+   "imp_punch_4",
+   "imp_punch_5"
+  ],
+  "imp_soft": [
+   "imp_soft_1",
+   "imp_soft_2",
+   "imp_soft_3"
+  ],
+  "imp_slap": [
+   "imp_slap_1",
+   "imp_slap_2",
+   "imp_slap_3"
+  ],
+  "imp_fin": [
+   "imp_fin_punch",
+   "imp_fin_slap",
+   "imp_fin_boom"
+  ],
+  "imp_thigh": [
+   "imp_thigh_1",
+   "imp_thigh_2",
+   "imp_thigh_3",
+   "imp_thigh_4"
+  ],
+  "imp_sub": [
+   "imp_sub_1",
+   "imp_sub_2",
+   "imp_sub_3"
+  ],
+  "step_mat": [
+   "step_mat_1",
+   "step_mat_2",
+   "step_mat_3",
+   "step_mat_4",
+   "step_mat_5"
+  ],
+  "step_floor": [
+   "step_floor_1",
+   "step_floor_2",
+   "step_floor_3",
+   "step_floor_4",
+   "step_floor_5"
+  ],
+  "rus_fin": [
+   "rus_fin_1",
+   "rus_fin_2"
+  ],
+  "rus_hit": [
+   "rus_hit_1",
+   "rus_hit_2",
+   "rus_hit_3",
+   "rus_hit_4"
+  ],
+  "rus_start": [
+   "rus_start_1",
+   "rus_start_2",
+   "rus_start_3"
+  ],
+  "rus_vic": [
+   "rus_vic_1",
+   "rus_vic_2",
+   "rus_vic_3"
+  ],
+  "amb_room": [
+   "amb_room"
+  ],
+  "amb_music": [
+   "amb_music"
+  ]
+ },
+ "dur": {
+  "v_flinch_1": 0.41,
+  "v_flinch_2": 0.49,
+  "v_flinch_3": 0.52,
+  "v_flinch_4": 0.58,
+  "v_flinch_5": 0.588,
+  "v_flinch_6": 0.45,
+  "v_flinch_7": 0.59,
+  "v_flinch_8": 0.32,
+  "v_groan_1": 1.99,
+  "v_groan_2": 1.68,
+  "v_groan_3": 0.98,
+  "v_groan_4": 1.34,
+  "v_groan_5": 1.99,
+  "v_groan_6": 0.74,
+  "v_groan_7": 0.84,
+  "v_whimper_1": 1.39,
+  "v_whimper_2": 1.94,
+  "v_whimper_3": 1.44,
+  "v_whimper_4": 1.04,
+  "v_whimper_5": 1.24,
+  "v_whimper_6": 1.09,
+  "v_scream_1": 1.31,
+  "v_scream_2": 1.94,
+  "v_scream_3": 1.09,
+  "v_scream_4": 1.19,
+  "v_scream_5": 0.74,
+  "v_floor_1": 1.34,
+  "v_floor_2": 2.84,
+  "v_floor_3": 2.39,
+  "v_floor_4": 2.44,
+  "v_floor_5": 1.84,
+  "v_tap_1": 0.61,
+  "v_tap_2": 0.54,
+  "v_tap_3": 0.59,
+  "v_tap_4": 0.84,
+  "v_tap_5": 0.64,
+  "imp_body_1": 0.534,
+  "imp_body_2": 0.383,
+  "imp_body_3": 0.462,
+  "imp_body_4": 0.534,
+  "imp_body_5": 0.472,
+  "imp_punch_1": 0.513,
+  "imp_punch_2": 0.428,
+  "imp_punch_3": 0.378,
+  "imp_punch_4": 0.386,
+  "imp_punch_5": 0.428,
+  "imp_soft_1": 0.527,
+  "imp_soft_2": 0.569,
+  "imp_soft_3": 0.569,
+  "imp_slap_1": 0.147,
+  "imp_slap_2": 0.143,
+  "imp_slap_3": 0.17,
+  "imp_fin_punch": 0.389,
+  "imp_fin_slap": 0.476,
+  "imp_thigh_1": 0.21,
+  "imp_thigh_2": 0.114,
+  "imp_thigh_3": 0.33,
+  "imp_thigh_4": 0.33,
+  "imp_sub_1": 0.45,
+  "imp_sub_2": 0.45,
+  "imp_sub_3": 0.45,
+  "imp_fin_boom": 1.9,
+  "step_mat_1": 0.166,
+  "step_mat_2": 0.142,
+  "step_mat_3": 0.142,
+  "step_mat_4": 0.142,
+  "step_mat_5": 0.142,
+  "step_floor_1": 0.103,
+  "step_floor_2": 0.105,
+  "step_floor_3": 0.11,
+  "step_floor_4": 0.108,
+  "step_floor_5": 0.111,
+  "rus_fin_1": 0.701,
+  "rus_fin_2": 0.846,
+  "rus_hit_1": 0.563,
+  "rus_hit_2": 0.758,
+  "rus_hit_3": 0.808,
+  "rus_hit_4": 1.042,
+  "rus_start_1": 0.924,
+  "rus_start_2": 1.028,
+  "rus_start_3": 3.231,
+  "rus_vic_1": 1.02,
+  "rus_vic_2": 0.544,
+  "rus_vic_3": 0.787,
+  "amb_room": 12.0,
+  "amb_music": 7.742
+ },
+ "v": 1,
+ "credits_used": {
+  "344407": [
+   "v_flinch_1"
+  ],
+  "344416": [
+   "v_flinch_2"
+  ],
+  "344415": [
+   "v_flinch_3"
+  ],
+  "464677": [
+   "v_flinch_4"
+  ],
+  "464679": [
+   "v_flinch_5"
+  ],
+  "464685": [
+   "v_flinch_6"
+  ],
+  "257709": [
+   "v_flinch_7"
+  ],
+  "800984": [
+   "v_flinch_8"
+  ],
+  "171758": [
+   "v_groan_1"
+  ],
+  "464684": [
+   "v_groan_2"
+  ],
+  "464676": [
+   "v_groan_3"
+  ],
+  "675807": [
+   "v_groan_4",
+   "v_floor_5"
+  ],
+  "257706": [
+   "v_groan_5"
+  ],
+  "869084": [
+   "v_groan_6",
+   "v_groan_7"
+  ],
+  "867172": [
+   "v_whimper_1",
+   "v_whimper_2",
+   "v_whimper_3",
+   "v_floor_2"
+  ],
+  "344680": [
+   "v_whimper_4",
+   "v_whimper_5",
+   "v_tap_2",
+   "v_tap_3"
+  ],
+  "103072": [
+   "v_whimper_6"
+  ],
+  "221544": [
+   "v_scream_1"
+  ],
+  "401210": [
+   "v_scream_2"
+  ],
+  "564253": [
+   "v_scream_3",
+   "v_scream_4"
+  ],
+  "416546": [
+   "v_scream_5"
+  ],
+  "867174": [
+   "v_floor_1"
+  ],
+  "344682": [
+   "v_floor_3"
+  ],
+  "481763": [
+   "v_floor_4"
+  ],
+  "318077": [
+   "v_tap_1"
+  ],
+  "803168": [
+   "v_tap_4",
+   "v_tap_5"
+  ],
+  "586841": [
+   "imp_body_1",
+   "imp_body_2",
+   "imp_body_3",
+   "imp_body_4",
+   "imp_body_5"
+  ],
+  "346931": [
+   "imp_slap_1",
+   "imp_slap_2",
+   "imp_slap_3"
+  ],
+  "399183": [
+   "imp_fin_punch"
+  ],
+  "564230": [
+   "imp_fin_slap"
+  ],
+  "860386": [
+   "imp_thigh_1"
+  ],
+  "860387": [
+   "imp_thigh_2"
+  ],
+  "636490": [
+   "imp_thigh_3",
+   "imp_thigh_4"
+  ]
+ }
+}

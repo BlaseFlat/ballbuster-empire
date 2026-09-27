@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Боллбастер: Империя паха</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a26;
+  --panel: #161622;
+  --border: #2a2a3d;
+  --accent: #e11d48;
+  --accent2: #fb7185;
+  --gold: #fbbf24;
+  --text: #e8e8f0;
+  --muted: #9ca3af;
+  --green: #34d399;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.55;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.2rem;
+  background: var(--accent);
+  color: #fff;
+  transition: transform .12s, background .15s, opacity .15s;
+}
+button:hover { background: var(--accent2); transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+button.secondary { background: var(--bg3); border: 1px solid var(--border); color: var(--text); }
+button.secondary:hover { background: var(--border); }
+button.danger { background: #7f1d1d; }
+button.gold { background: #92400e; color: var(--gold); }
+button.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.screen { display: none; min-height: 100vh; padding: 1.25rem; max-width: 960px; margin: 0 auto; }
+.screen.active { display: block; }
+.stats-bar {
+  display: flex; flex-wrap: wrap; gap: .6rem 1.2rem;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: .75rem 1rem; margin-bottom: 1rem;
+  position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px);
+}
+.stat { font-size: .85rem; color: var(--muted); }
+.stat b { color: var(--text); font-weight: 700; }
+.stat.cruelty b { color: var(--accent2); }
+.stat.rep b { color: var(--gold); }
+.stat.stam b { color: var(--green); }
+.stat.trophy b { color: var(--purple); }
+.stat.chapter b { color: var(--blue); }
+h1 { font-size: 1.75rem; margin-bottom: .5rem; letter-spacing: .02em; }
+h2 { font-size: 1.25rem; margin: 1rem 0 .6rem; color: var(--accent2); }
+h3 { font-size: 1.05rem; margin: .8rem 0 .4rem; color: var(--gold); }
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: .85rem;
+}
+.card.locked { opacity: .45; }
+.card.unlocked:hover { border-color: var(--accent); }
+.loc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .85rem; }
+.loc-card {
+  background: linear-gradient(145deg, var(--bg3), var(--panel));
+  border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem;
+  cursor: pointer; transition: border-color .15s, transform .12s;
+}
+.loc-card:hover:not(.locked) { border-color: var(--accent2); transform: translateY(-2px); }
+.loc-card.locked { opacity: .4; cursor: not-allowed; }
+.loc-card .tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.loc-card h3 { margin: .35rem 0; color: var(--text); }
+.npc-list { display: flex; flex-direction: column; gap: .65rem; }
+.npc-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: .85rem 1rem;
+}
+.npc-row .info { flex: 1; }
+.npc-row .name { font-weight: 700; color: var(--accent2); }
+.npc-row .bio { font-size: .88rem; color: var(--muted); margin-top: .2rem; }
+.npc-row .meta { font-size: .78rem; color: var(--gold); margin-top: .25rem; }
+.choices { display: flex; flex-direction: column; gap: .55rem; margin-top: 1rem; }
+.log {
+  background: #0d0d14; border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem; max-height: 320px; overflow-y: auto; font-size: .95rem;
+  white-space: pre-wrap; margin: .75rem 0;
+}
+.log .line { margin-bottom: .65rem; padding-bottom: .65rem; border-bottom: 1px solid #1f1f2e; }
+.log .line:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.log .hurt { color: var(--accent2); }
+.log .plea { color: var(--gold); font-style: italic; }
+.log .dom { color: var(--purple); }
+.log .sys { color: var(--muted); font-size: .85rem; }
+.menu-hero {
+  text-align: center; padding: 3rem 1rem 2rem;
+  background: radial-gradient(ellipse at top, #3b0a16 0%, var(--bg) 60%);
+  border-radius: 0 0 24px 24px; margin: -1.25rem -1.25rem 2rem;
+}
+.menu-hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  background: linear-gradient(90deg, #fda4af, #e11d48, #fbbf24);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.menu-hero p { color: var(--muted); max-width: 480px; margin: .75rem auto 1.5rem; }
+.menu-btns { display: flex; flex-direction: column; gap: .7rem; max-width: 320px; margin: 0 auto; }
+.badge {
+  display: inline-block; font-size: .7rem; padding: .15rem .45rem;
+  border-radius: 999px; background: var(--bg3); color: var(--muted); margin-left: .35rem;
+}
+.badge.done { background: #14532d; color: var(--green); }
+.badge.broken { background: #7f1d1d; color: #fecaca; }
+.progress-bar {
+  height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; margin-top: .4rem;
+}
+.progress-bar > i { display: block; height: 100%; background: var(--accent); width: 0%; transition: width .3s; }
+.toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: var(--panel); border: 1px solid var(--accent); color: var(--text);
+  padding: .7rem 1.2rem; border-radius: 10px; z-index: 100; display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5); max-width: 90%;
+}
+.toast.show { display: block; animation: fadein .2s; }
+@keyframes fadein { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.footer-nav { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1.25rem; }
+.path-choice {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; margin: 1rem 0;
+}
+@media (max-width: 640px) {
+  .path-choice { grid-template-columns: 1fr; }
+  .npc-row { flex-direction: column; align-items: stretch; }
+}
+.ending-box {
+  border: 2px solid var(--gold); background: linear-gradient(160deg, #1a1208, var(--panel));
+  border-radius: 14px; padding: 1.5rem; margin: 1rem 0;
+}
+.ending-box h2 { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- MAIN MENU -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-hero">
+    <h1>Боллбастер: Империя паха</h1>
+    <p>Ты — молодая доминантка. Мужчины существуют, чтобы складываться от твоего удара в пах. Жестокость — твоя валюта. Сломай их.</p>
+    <div class="menu-btns">
+      <button onclick="startNewGame()">Новая игра</button>
+      <button class="secondary" id="btn-continue" onclick="continueGame()" disabled>Продолжить</button>
+      <button class="ghost" onclick="showAbout()">Об игре</button>
+      <button class="danger" onclick="resetSave()">Заново / Сброс</button>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<div id="screen-about" class="screen">
+  <h1>Об игре</h1>
+  <div class="card">
+    <p><b>Боллбастер: Империя паха</b> — интерактивная фетиш-игра (ballbusting) для взрослых 21+.</p>
+    <p style="margin-top:.6rem">Ты играешь за жестокую молодую женщину, которая получает удовольствие, пиная и уничтожая мужские яйца — публично или наедине. Графика в тексте максимальная: боль, слёзы, мольба, сломленная гордость.</p>
+    <p style="margin-top:.6rem">Системы: статистика, карта локаций, несколько NPC с разными концовками, бои в несколько раундов, две сюжетные ветки и финал на Арене.</p>
+    <p style="margin-top:.6rem;color:var(--muted)">Весь контент — взрослый консенсуальный фетиш-фэнтези. Персонажам 21+.</p>
+  </div>
+  <button class="secondary" onclick="showScreen('menu')">Назад</button>
+</div>
+
+<!-- HUB -->
+<div id="screen-hub" class="screen">
+  <div class="stats-bar" id="stats-bar"></div>
+  <h1>Карта империи</h1>
+  <p style="color:var(--muted);margin-bottom:1rem" id="hub-flavor"></p>
+  <div class="loc-grid" id="loc-grid"></div>
+  <div class="footer-nav">
+    <button class="secondary" onclick="showJournal()">Журнал трофеев</button>
+    <button class="ghost" onclick="saveAndMenu()">В меню (сохранить)</button>
+  </div>
+</div>
+
+<!-- LOCATION -->
+<div id="screen-location" class="screen">
+  <div class="stats-bar" id="stats-bar-loc"></div>
+  <button class="ghost" onclick="showHub()" style="margin-bottom:.75rem">← Карта</button>
+  <h1 id="loc-title"></h1>
+  <p id="loc-desc" style="color:var(--muted);margin-bottom:1rem"></p>
+  <div class="npc-list" id="npc-list"></div>
+</div>
+
+<!-- STORY / CHOICE -->
+<div id="screen-story" class="screen">
+  <div class="stats-bar" id="stats-bar-story"></div>
+  <h2 id="story-title"></h2>
+  <div class="card" id="story-body"></div>
+  <div class="choices" id="story-choices"></div>
+</div>
+
+<!-- ENCOUNTER -->
+<div id="screen-encounter" class="screen">
+  <div class="stats-bar" id="stats-bar-enc"></div>
+  <h2 id="enc-title">Стычка</h2>
+  <p id="enc-sub" style="color:var(--muted)"></p>
+  <div class="progress-bar"><i id="enc-hp-bar"></i></div>
+  <p style="font-size:.8rem;color:var(--muted);margin-top:.25rem">Стойкость жертвы: <span id="enc-hp-label">100%</span> · Твоя выносливость: <span id="enc-stam-label">—</span></p>
+  <div class="log" id="enc-log"></div>
+  <div class="choices" id="enc-choices"></div>
+</div>
+
+<!-- JOURNAL -->
+<div id="screen-journal" class="screen">
+  <div class="stats-bar" id="stats-bar-journal"></div>
+  <h1>Журнал трофеев</h1>
+  <div id="journal-body"></div>
+  <button class="secondary" onclick="showHub()" style="margin-top:1rem">← Карта</button>
+</div>
+
+<!-- ENDING -->
+<div id="screen-ending" class="screen">
+  <div class="ending-box" id="ending-box"></div>
+  <div class="choices">
+    <button onclick="startNewGame()">Новая игра</button>
+    <button class="secondary" onclick="showScreen('menu')">В меню</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   БОЛЛБАСТЕР: ИМПЕРИЯ ПАХА — v1
+   ============================================================ */
+
+const SAVE_KEY = 'ballbuster_empire_v1';
+
+const LOCATIONS = {
+  campus: {
+    id: 'campus', name: 'Кампус',
+    desc: 'Коридоры универа, туалеты, парковка. Идеально для первой крови и публичного стыда.',
+    unlock: () => true,
+    flavor: 'Запах кофе, дедлайны и мужчины, которые ещё не знают, что их яйца уже твои.'
+  },
+  gym: {
+    id: 'gym', name: 'Спортзал',
+    desc: 'Тренажёрка, раздевалки, ковры. Здесь мышцы не спасают от колена в пах.',
+    unlock: (s) => s.chapter >= 1 && (s.trophies >= 1 || s.cruelty >= 15),
+    flavor: 'Звук штанги. И звук мужчины, который больше никогда не встанет ровно.'
+  },
+  party: {
+    id: 'party', name: 'Вечеринка',
+    desc: 'Частная тусовка. Алкоголь, музыка, свидетели. Публичное унижение на максималках.',
+    unlock: (s) => s.chapter >= 2 || s.path === 'public' || s.reputation >= 20,
+    flavor: 'Все смотрят. Он знает. Ты улыбаешься.'
+  },
+  club: {
+    id: 'club', name: 'Подпольный клуб',
+    desc: 'Закрытый клуб для тех, кто понимает. Здесь платят за жестокость репутацией.',
+    unlock: (s) => s.reputation >= 35 || (s.path === 'private' && s.trophies >= 3),
+    flavor: 'Темнота, кожа, эхо стонов. Здесь ты уже легенда — или станешь ей.'
+  },
+  arena: {
+    id: 'arena', name: 'Арена финала',
+    desc: 'Турнир. Финальный показ. Сломай последнего — или всех.',
+    unlock: (s) => (s.chapter >= 3 && s.trophies >= 4 && s.cruelty >= 35) || s.trophies >= 5,
+    flavor: 'Свет. Толпа. Пах на кону империи.'
+  }
+};
+
+const NPCS = {
+  artem: {
+    id: 'artem', name: 'Артём', loc: 'campus',
+    bio: 'Самоуверенный старшекурсник, 22. Хвастается «стальными яйцами» в чате группы.',
+    resistance: 55, threshold: 40,
+    approaches: true,
+    endings: { broken: 'Артём больше не шутит про яйца. Он вздрагивает от женских шагов.', submitted: 'Артём пишет тебе каждое утро, прося «ещё раз, если позволишь».', ruined: 'Его репутация «альфы» сгнила в мемах кампуса.' }
+  },
+  denis: {
+    id: 'denis', name: 'Денис', loc: 'campus',
+    bio: 'Тихий ботаник, 23. Думал, что его не заметят. Ошибся.',
+    resistance: 35, threshold: 25,
+    endings: { broken: 'Денис плачет от одного взгляда на твои кроссовки.', submitted: 'Денис приносит тебе кофе и молча поднимает руки, когда ты киваешь на пах.', ruined: 'Он бросил учёбу на семестр — стыд сильнее боли.' }
+  },
+  maxim: {
+    id: 'maxim', name: 'Максим', loc: 'gym',
+    bio: 'Качок-тренер, 26. Гордится прессом. Пах — его слепая зона.',
+    resistance: 70, threshold: 55,
+    endings: { broken: 'Максим больше не поднимает тяжести стоя. Только сидя — и то морщась.', submitted: 'Он зовёт тебя «тренером» и сам подставляет пах «на проверку».', ruined: 'Клиенты видели, как он блевал на ковре. Бизнес рухнул.' }
+  },
+  ilya: {
+    id: 'ilya', name: 'Илья', loc: 'party',
+    bio: 'Тусовщик, 24. Любит быть в центре внимания. Сегодня внимание будет в его яйцах.',
+    resistance: 50, threshold: 35,
+    endings: { broken: 'Илья больше не танцует. Слишком больно даже думать о ритме.', submitted: 'На каждой вечеринке он ищет тебя глазами — и падает на колени без приказа.', ruined: 'Видео его мольбы гуляет по всем чатам. Он сменил город.' }
+  },
+  roman: {
+    id: 'roman', name: 'Роман', loc: 'club',
+    bio: 'Завсегдатай клуба, 28. Мазохист с гордостью. Хочет сломаться — но красиво.',
+    resistance: 80, threshold: 60,
+    endings: { broken: 'Роман перестал говорить. Только скулит, когда ты проходишь мимо.', submitted: 'Он носит твой знак на шее и просит удары как дыхание.', ruined: 'Даже в клубе над ним смеются: «легенда, которую вынесли на носилках».' }
+  },
+  victor: {
+    id: 'victor', name: 'Виктор', loc: 'arena',
+    bio: 'Чемпион подполья, 27. Последний, кто ещё верит, что выстоит. Не выстоит.',
+    resistance: 95, threshold: 75,
+    endings: { broken: 'Виктор — бывший чемпион. Теперь — мясо с пустыми глазами.', submitted: 'Он объявляет тебя императрицей паха при полной арене.', ruined: 'Толпа освистала его слёзы. Империя твоя.' }
+  }
+};
+
+const STRIKES = {
+  toe: { id: 'toe', name: 'Носок', stam: 8, dmg: [12, 22], cruel: 1, text: 'носком' },
+  knee: { id: 'knee', name: 'Колено', stam: 14, dmg: [22, 35], cruel: 2, text: 'коленом' },
+  heel: { id: 'heel', name: 'Каблук', stam: 18, dmg: [28, 42], cruel: 3, text: 'каблуком' },
+  combo: { id: 'combo', name: 'Серия', stam: 25, dmg: [35, 55], cruel: 4, text: 'серией ударов' }
+};
+
+const APPROACHES = {
+  provoke: { id: 'provoke', name: 'Провокация', bonus: 0, stam: 0, desc: 'Дразнишь, пока он не потеряет осторожность.' },
+  challenge: { id: 'challenge', name: 'Вызов', bonus: 5, stam: 5, desc: 'Открытый вызов: пусть знает, что сейчас будет.' },
+  surprise: { id: 'surprise', name: 'Внезапный удар', bonus: 15, stam: 10, desc: 'Без предупреждения. Максимум шока.' }
+};
+
+function defaultState() {
+  return {
+    version: 1,
+    cruelty: 5,
+    reputation: 0,
+    stamina: 100,
+    maxStamina: 100,
+    trophies: 0,
+    chapter: 1,
+    path: null, // 'public' | 'private'
+    pathChosen: false,
+    locationsUnlocked: ['campus'],
+    npcState: {}, // id -> { fought, ending, damageDone, folded }
+    flags: {},
+    encounterCount: 0,
+    journal: [],
+    finaleDone: false
+  };
+}
+
+let state = defaultState();
+let enc = null; // current encounter runtime
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+  updateContinueBtn();
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state = Object.assign(defaultState(), data);
+    return true;
+  } catch (e) { return false; }
+}
+
+function updateContinueBtn() {
+  const btn = document.getElementById('btn-continue');
+  const has = !!localStorage.getItem(SAVE_KEY);
+  btn.disabled = !has;
+}
+
+function resetSave() {
+  localStorage.removeItem(SAVE_KEY);
+  state = defaultState();
+  updateContinueBtn();
+  toast('Сохранение сброшено.');
+  showScreen('menu');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function showAbout() { showScreen('about'); }
+
+function startNewGame() {
+  state = defaultState();
+  save();
+  showIntro();
+}
+
+function continueGame() {
+  if (!load()) { toast('Нет сохранения.'); return; }
+  if (state.finaleDone) { showEndingScreen(state.flags.endingType || 'empire'); return; }
+  showHub();
+}
+
+function saveAndMenu() { save(); showScreen('menu'); updateContinueBtn(); }
+
+function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+function rand(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function ensureNpc(id) {
+  if (!state.npcState[id]) {
+    state.npcState[id] = { fought: false, ending: null, damageDone: 0, folded: false, rounds: 0 };
+  }
+  return state.npcState[id];
+}
+
+function renderStats(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const chLabel = state.chapter >= 4 || state.finaleDone ? 'Финал' : ('Глава ' + state.chapter);
+  el.innerHTML = `
+    <span class="stat cruelty">Жестокость: <b>${state.cruelty}</b></span>
+    <span class="stat rep">Репутация: <b>${state.reputation}</b></span>
+    <span class="stat stam">Выносливость: <b>${state.stamina}/${state.maxStamina}</b></span>
+    <span class="stat trophy">Трофеи: <b>${state.trophies}</b></span>
+    <span class="stat chapter">${chLabel}</span>
+    ${state.path ? `<span class="stat">Путь: <b>${state.path === 'public' ? 'Публичный позор' : 'Частная пытка'}</b></span>` : ''}
+  `;
+}
+
+function refreshAllStats() {
+  ['stats-bar','stats-bar-loc','stats-bar-story','stats-bar-enc','stats-bar-journal'].forEach(renderStats);
+}
+
+/* ---------- INTRO & PATH ---------- */
+function showIntro() {
+  showScreen('story');
+  refreshAllStats();
+  document.getElementById('story-title').textContent = 'Пролог';
+  document.getElementById('story-body').innerHTML = `
+    <p>Тебе двадцать два. Тело сильное, взгляд холодный, улыбка — нож.</p>
+    <p style="margin-top:.6rem">С первого раза, когда ты «случайно» врезала парню коленом между ног и увидела, как он сложился, захлёбываясь воздухом, — ты поняла: это не случайность. Это вкус. Это власть. Это то, ради чего стоит жить.</p>
+    <p style="margin-top:.6rem">Сегодня ты начинаешь строить империю. Кампус — первая территория. Мужчины — расходный материал. Их яйца — твоя добыча.</p>
+    <p style="margin-top:.6rem;color:var(--accent2)">Выбери, как ты будешь ломать их. Этот выбор определит, кого ты встретишь и чем закончится финал.</p>
+  `;
+  document.getElementById('story-choices').innerHTML = `
+    <div class="path-choice">
+      <div class="card" style="cursor:pointer" onclick="choosePath('public')">
+        <h3>Публичный позор</h3>
+        <p style="color:var(--muted);font-size:.9rem">Свидетели, смех, видео, репутация. Пусть все видят, как он орёт и блюёт от удара в яйца. Быстрее растёт Репутация, открывается Вечеринка раньше.</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="choosePath('private')">
+        <h3>Частная пытка</h3>
+        <p style="color:var(--muted);font-size:.9rem">Тишина, закрытая дверь, долгие серии. Ты смакуешь каждый всхлип наедине. Быстрее растёт Жестокость, Подпольный клуб ближе.</p>
+      </div>
+    </div>
+  `;
+}
+
+function choosePath(path) {
+  state.path = path;
+  state.pathChosen = true;
+  state.flags.introDone = true;
+  if (path === 'public') { state.reputation += 5; }
+  else { state.cruelty += 5; }
+  save();
+  toast(path === 'public' ? 'Путь: публичный позор.' : 'Путь: частная пытка.');
+  showHub();
+}
+
+/* ---------- HUB ---------- */
+function showHub() {
+  if (!state.pathChosen) { showIntro(); return; }
+  checkUnlocks();
+  showScreen('hub');
+  refreshAllStats();
+  const flavors = {
+    1: 'Глава 1. Кампус пахнет страхом — пока только твоим аппетитом.',
+    2: 'Глава 2. Слухи расползаются. Кто-то уже держится за пах, заслышав твоё имя.',
+    3: 'Глава 3. Империя растёт. Осталось доказать это на Арене.',
+    4: 'Финал близко. Арена ждёт.'
+  };
+  document.getElementById('hub-flavor').textContent = flavors[Math.min(state.chapter, 4)] + (state.path === 'public' ? ' Толпа — твой союзник.' : ' Тишина — твоё оружие.');
+
+  const grid = document.getElementById('loc-grid');
+  grid.innerHTML = '';
+  Object.values(LOCATIONS).forEach(loc => {
+    const unlocked = state.locationsUnlocked.includes(loc.id) || loc.unlock(state);
+    if (unlocked && !state.locationsUnlocked.includes(loc.id)) {
+      state.locationsUnlocked.push(loc.id);
+    }
+    const isOpen = state.locationsUnlocked.includes(loc.id);
+    const div = document.createElement('div');
+    div.className = 'loc-card' + (isOpen ? '' : ' locked');
+    div.innerHTML = `
+      <div class="tag">${isOpen ? 'Открыто' : 'Закрыто'}</div>
+      <h3>${loc.name}</h3>
+      <p style="font-size:.88rem;color:var(--muted)">${isOpen ? loc.desc : 'Требования ещё не выполнены.'}</p>
+    `;
+    if (isOpen) div.onclick = () => openLocation(loc.id);
+    grid.appendChild(div);
+  });
+  save();
+}
+
+function checkUnlocks() {
+  Object.values(LOCATIONS).forEach(loc => {
+    if (loc.unlock(state) && !state.locationsUnlocked.includes(loc.id)) {
+      state.locationsUnlocked.push(loc.id);
+      toast('Открыта локация: ' + loc.name);
+    }
+  });
+  // Chapter progression
+  if (state.trophies >= 2 && state.chapter < 2) { state.chapter = 2; toast('Глава 2 началась.'); }
+  if (state.trophies >= 4 && state.chapter < 3) { state.chapter = 3; toast('Глава 3 началась.'); }
+  if (state.locationsUnlocked.includes('arena') && state.chapter < 4) { state.chapter = 4; }
+}
+
+function openLocation(locId) {
+  const loc = LOCATIONS[locId];
+  showScreen('location');
+  refreshAllStats();
+  document.getElementById('loc-title').textContent = loc.name;
+  document.getElementById('loc-desc').textContent = loc.flavor;
+
+  const list = document.getElementById('npc-list');
+  list.innerHTML = '';
+
+  // Rest option
+  const rest = document.createElement('div');
+  rest.className = 'card';
+  rest.innerHTML = `<p style="color:var(--muted);font-size:.9rem">Можно перевести дух и восстановить выносливость (+35), если драки вымотали.</p>`;
+  const restBtn = document.createElement('button');
+  restBtn.className = 'secondary';
+  restBtn.textContent = 'Передохнуть (+35 вын.)';
+  restBtn.onclick = () => {
+    state.stamina = clamp(state.stamina + 35, 0, state.maxStamina);
+    save(); refreshAllStats(); toast('Выносливость восстановлена.');
+  };
+  rest.appendChild(restBtn);
+  list.appendChild(rest);
+
+  const npcs = Object.values(NPCS).filter(n => n.loc === locId);
+  if (!npcs.length) {
+    list.innerHTML += '<p style="color:var(--muted)">Здесь пока никого.</p>';
+    return;
+  }
+  npcs.forEach(npc => {
+    const st = ensureNpc(npc.id);
+    const row = document.createElement('div');
+    row.className = 'npc-row';
+    let badge = '';
+    if (st.ending) badge = `<span class="badge broken">${endingLabel(st.ending)}</span>`;
+    else if (st.fought) badge = `<span class="badge">В бою</span>`;
+    row.innerHTML = `
+      <div class="info">
+        <div class="name">${npc.name}${badge}</div>
+        <div class="bio">${npc.bio}</div>
+        <div class="meta">Сопротивление: ${npc.resistance} · Порог боли: ${npc.threshold}</div>
+      </div>
+    `;
+    const btn = document.createElement('button');
+    if (st.ending) {
+      btn.textContent = 'Трофей добыт';
+      btn.disabled = true;
+      btn.className = 'secondary';
+    } else if (locId === 'arena' && npc.id === 'victor') {
+      btn.textContent = 'Выйти на арену';
+      btn.className = 'gold';
+      btn.onclick = () => startFinale();
+    } else {
+      btn.textContent = st.fought ? 'Добить' : 'Начать стычку';
+      btn.onclick = () => beginEncounter(npc.id);
+    }
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+
+  // Special: arena intro if only victor
+  if (locId === 'arena' && !state.flags.arenaIntro) {
+    // ok
+  }
+}
+
+function endingLabel(e) {
+  return e === 'broken' ? 'Сломан' : e === 'submitted' ? 'Подчинился' : 'Гордость уничтожена';
+}
+
+/* ---------- ENCOUNTER ---------- */
+function beginEncounter(npcId) {
+  const npc = NPCS[npcId];
+  const st = ensureNpc(npcId);
+  if (state.stamina < 10) {
+    toast('Слишком мало выносливости. Отдохни на локации.');
+    return;
+  }
+  enc = {
+    npcId,
+    hp: Math.max(20, npc.resistance - Math.floor(st.damageDone * 0.3)),
+    maxHp: npc.resistance,
+    approach: null,
+    round: 0,
+    log: [],
+    over: false
+  };
+  showScreen('encounter');
+  refreshAllStats();
+  document.getElementById('enc-title').textContent = 'Стычка: ' + npc.name;
+  document.getElementById('enc-sub').textContent = npc.bio;
+  document.getElementById('enc-log').innerHTML = '';
+  updateEncBars();
+  showApproachChoices();
+}
+
+function updateEncBars() {
+  if (!enc) return;
+  const pct = clamp(Math.round((enc.hp / enc.maxHp) * 100), 0, 100);
+  document.getElementById('enc-hp-bar').style.width = pct + '%';
+  document.getElementById('enc-hp-label').textContent = pct + '%';
+  document.getElementById('enc-stam-label').textContent = state.stamina;
+}
+
+function addLog(html, cls) {
+  const log = document.getElementById('enc-log');
+  const line = document.createElement('div');
+  line.className = 'line' + (cls ? ' ' + cls : '');
+  line.innerHTML = html;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  if (enc) enc.log.push(html);
+}
+
+function showApproachChoices() {
+  const box = document.getElementById('enc-choices');
+  box.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Выбери подход:</p>';
+  Object.values(APPROACHES).forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'secondary';
+    b.textContent = `${a.name} — ${a.desc}`;
+    b.onclick = () => selectApproach(a.id);
+    box.appendChild(b);
+  });
+  const leave = document.createElement('button');
+  leave.className = 'ghost';
+  leave.textContent = 'Уйти (сохранить прогресс ударов)';
+  leave.onclick = () => abortEncounter();
+  box.appendChild(leave);
+}
+
+function selectApproach(id) {
+  const a = APPROACHES[id];
+  enc.approach = id;
+  state.stamina = clamp(state.stamina - a.stam, 0, state.maxStamina);
+  const npc = NPCS[enc.npcId];
+  let intro = '';
+  if (id === 'provoke') {
+    intro = `Ты подходишь к ${npc.name}у вплотную, улыбаясь слишком сладко. «Слышала, у тебя стальные яйца? Интересно проверить.» Он смеётся — пока ты не смотришь вниз, на его пах, слишком долго и слишком голодно.`;
+  } else if (id === 'challenge') {
+    intro = `«Эй. Пах. Сейчас.» Голос холодный. ${npc.name} бледнеет, но пытается держаться. Вокруг кто-то уже оборачивается. Ты медленно поднимаешь колено, демонстрируя цель.`;
+  } else {
+    intro = `Без слова. Шаг. Разворот бёдер. Носок врезается в мячик справа раньше, чем он успевает вдохнуть. Воздух вышибает из лёгких. Глаза лезут на лоб.`;
+    // surprise immediate chip damage
+    const chip = 8 + Math.floor(state.cruelty / 10);
+    enc.hp = Math.max(0, enc.hp - chip);
+  }
+  addLog(intro, 'dom');
+  if (id === 'surprise') addLog(`Внезапный удар уже отнял у него силу. Стойкость: ${Math.round(enc.hp/enc.maxHp*100)}%.`, 'sys');
+  updateEncBars();
+  refreshAllStats();
+  showStrikeChoices();
+}
+
+function showStrikeChoices() {
+  const box = document.getElementById('enc-choices');
+  box.innerHTML = '<p style="color:var(--muted);font-size:.9rem">Стиль удара:</p>';
+  Object.values(STRIKES).forEach(s => {
+    const b = document.createElement('button');
+    const can = state.stamina >= s.stam;
+    b.disabled = !can;
+    b.textContent = `${s.name} (−${s.stam} вын., урон ~${s.dmg[0]}–${s.dmg[1]})`;
+    b.onclick = () => doStrike(s.id);
+    box.appendChild(b);
+  });
+  const stop = document.createElement('button');
+  stop.className = 'ghost';
+  stop.textContent = 'Остановить / Уйти';
+  stop.onclick = () => abortEncounter();
+  box.appendChild(stop);
+}
+
+function doStrike(strikeId) {
+  if (!enc || enc.over) return;
+  const s = STRIKES[strikeId];
+  const npc = NPCS[enc.npcId];
+  const st = ensureNpc(npc.id);
+  if (state.stamina < s.stam) { toast('Не хватает выносливости.'); return; }
+
+  state.stamina -= s.stam;
+  enc.round++;
+  st.rounds++;
+
+  let dmg = rand(s.dmg[0], s.dmg[1]);
+  // approach bonus
+  if (enc.approach === 'surprise' && enc.round === 1) dmg += 15;
+  if (enc.approach === 'challenge') dmg += 5;
+  // cruelty scaling
+  dmg += Math.floor(state.cruelty / 8);
+  // path bonus
+  if (state.path === 'private' && (strikeId === 'combo' || strikeId === 'heel')) dmg += 6;
+  if (state.path === 'public' && enc.round <= 2) dmg += 4;
+
+  enc.hp = Math.max(0, enc.hp - dmg);
+  st.damageDone += dmg;
+  state.cruelty += s.cruel;
+  if (state.path === 'public') state.reputation += 1;
+  else if (strikeId === 'heel' || strikeId === 'combo') state.cruelty += 1;
+
+  const reaction = buildReaction(npc, s, dmg, enc.hp / enc.maxHp);
+  addLog(reaction.hit, 'hurt');
+  addLog(reaction.body, 'hurt');
+  if (reaction.plea) addLog(reaction.plea, 'plea');
+  if (reaction.crowd && state.path === 'public') addLog(reaction.crowd, 'sys');
+
+  updateEncBars();
+  refreshAllStats();
+
+  if (enc.hp <= 0 || enc.hp <= npc.threshold * 0.15) {
+    finishEncounter('fold');
+    return;
+  }
+  if (state.stamina < 8) {
+    addLog('Ты тяжело дышишь. Выносливость на нуле — пора отступить или добить слабым ударом позже.', 'sys');
+  }
+  showStrikeChoices();
+  save();
+}
+
+function buildReaction(npc, strike, dmg, hpRatio) {
+  const name = npc.name;
+  const style = strike.text;
+  const hard = state.cruelty >= 40;
+  const mid = hpRatio < 0.55;
+  const low = hpRatio < 0.3;
+
+  const hits = [
+    `Ты бьёшь ${style} точно в центр мошонки. Удар глухой, влажный, отвратительно правильный.`,
+    `${style.charAt(0).toUpperCase() + style.slice(1)} врезается в яйца ${name}а. Мягкая плоть плющится между костью и бедром.`,
+    `Цель поймана. ${style.charAt(0).toUpperCase() + style.slice(1)} входит снизу вверх, поднимая яйца и разнося боль по всему животу.`
+  ];
+  if (strike.id === 'heel') hits.push(`Каблук впивается в одно яйцо, проворачиваясь. Хрящик жалобно протестует под тонкой кожей.`);
+  if (strike.id === 'combo') hits.push(`Серия: носок — колено — снова носок. Пах превращается в пульсирующее месиво.`);
+  if (strike.id === 'knee') hits.push(`Колено входит как таран. Оба яйца сжимаются одновременно — идеальный double-crush.`);
+
+  let body = '';
+  if (hpRatio > 0.7) {
+    body = `${name} всхлипывает, глаза округляются. Руки инстинктивно летят к паху, но уже поздно — боль волной поднимается в живот. Колени подгибаются.`;
+  } else if (!mid) {
+    body = `${name} складывается пополам, издавая высокий сдавленный вой. Лицо багровеет. Изо рта течёт слюна. Он пытается дышать — получается только хрип.`;
+  } else if (!low) {
+    body = `${name} падает на колени. Слёзы текут без спроса. Он блюёт желчью рядом с твоими ногами, всё ещё прижимая дрожащие ладони к уничтоженным яйцам. Живот судорогой ходит ходуном.`;
+    if (hard) body += ` Ты ставишь ногу ему на запястье, чтобы он не закрывался, и смотришь, как пах дергается от агонии.`;
+  } else {
+    body = `${name} лежит клубочком, бёдра в судороге, яйца опухшие и багровые. Он больше не кричит — только всхлипывает и шепчет что-то бессвязное. Гордость вытекла вместе со слёзами.`;
+    if (hard) body += ` Ты легко касаешься носком его мошонки — он взвизгивает, как животное.`;
+  }
+
+  let plea = null;
+  const pleas = [
+    `«Пожалуйста… хватит… яйца… я больше не могу…»`,
+    `«Не надо… прошу… сломаешь… я сделаю что угодно…»`,
+    `«Госпожа… прости… пах горит… умоляю…»`,
+    `«Перестань… люди видят… мне стыдно… больно…»`
+  ];
+  if (mid || dmg > 30) plea = name + ': ' + pick(pleas);
+
+  let crowd = null;
+  if (state.path === 'public') {
+    crowd = pick([
+      'Кто-то улюлюкает. Телефон уже снимает.',
+      'Девушки хихикают. Парни инстинктивно сжимают бёдра.',
+      'Шёпот: «Это она. Боллбастерша.»'
+    ]);
+  }
+
+  return { hit: pick(hits) + ` <span class="sys">[−${dmg}]</span>`, body, plea, crowd };
+}
+
+function abortEncounter() {
+  if (!enc) { showHub(); return; }
+  const st = ensureNpc(enc.npcId);
+  st.fought = true;
+  st.damageDone += (enc.maxHp - enc.hp);
+  addLog('Ты отступаешь, оставляя его корчиться. Вернёшься — добьёшь.', 'sys');
+  enc.over = true;
+  save();
+  const box = document.getElementById('enc-choices');
+  box.innerHTML = '';
+  const b = document.createElement('button');
+  b.textContent = 'На карту';
+  b.onclick = () => { enc = null; showHub(); };
+  box.appendChild(b);
+}
+
+function finishEncounter(reason) {
+  enc.over = true;
+  const npc = NPCS[enc.npcId];
+  const st = ensureNpc(npc.id);
+  st.fought = true;
+  st.folded = true;
+  const wasFinale = (npc.id === 'victor');
+
+  // Determine ending type
+  let ending = 'broken';
+  if (state.path === 'public' && state.reputation >= 25) ending = 'ruined';
+  else if (state.cruelty >= 50 || enc.round >= 5) ending = 'submitted';
+  else if (state.path === 'private' && state.cruelty >= 30) ending = 'submitted';
+  else if (Math.random() < 0.33) ending = pick(['broken', 'submitted', 'ruined']);
+
+  st.ending = ending;
+  state.trophies += 1;
+  state.encounterCount += 1;
+  state.reputation += state.path === 'public' ? 8 : 4;
+  state.cruelty += 3;
+  state.maxStamina = Math.min(140, state.maxStamina + 3);
+  state.stamina = clamp(state.stamina + 15, 0, state.maxStamina);
+
+  const endText = npc.endings[ending];
+  addLog(`<b>${npc.name} сломлен.</b> ${endText}`, 'dom');
+  addLog(`Трофей получен. Жестокость и репутация выросли.`, 'sys');
+
+  state.journal.push({
+    npc: npc.name,
+    ending,
+    loc: NPCS[npc.id].loc,
+    cruelty: state.cruelty,
+    note: endText
+  });
+
+  checkUnlocks();
+  save();
+
+  const box = document.getElementById('enc-choices');
+  box.innerHTML = '';
+
+  if (wasFinale) {
+    state.flags.pendingBeat = null;
+    addLog('Толпа ревёт. Империя паха — твоя.', 'dom');
+    const b = document.createElement('button');
+    b.className = 'gold';
+    b.textContent = 'Принять корону империи';
+    b.onclick = () => { enc = null; resolveFinale(); };
+    box.appendChild(b);
+    return;
+  }
+
+  // Mid-story beats
+  maybeStoryBeat();
+
+  const b = document.createElement('button');
+  b.textContent = 'Продолжить';
+  b.onclick = () => {
+    enc = null;
+    if (state.flags.pendingBeat) {
+      const beat = state.flags.pendingBeat;
+      state.flags.pendingBeat = null;
+      showStoryBeat(beat);
+    } else {
+      showHub();
+    }
+  };
+  box.appendChild(b);
+}
+
+function maybeStoryBeat() {
+  if (state.trophies === 1 && !state.flags.beat1) {
+    state.flags.beat1 = true;
+    state.flags.pendingBeat = 'beat1';
+  } else if (state.trophies === 3 && !state.flags.beat2) {
+    state.flags.beat2 = true;
+    state.flags.pendingBeat = 'beat2';
+  } else if (state.trophies >= 4 && !state.flags.beat3 && state.chapter >= 3) {
+    state.flags.beat3 = true;
+    state.flags.pendingBeat = 'beat3';
+  }
+}
+
+function showStoryBeat(id) {
+  showScreen('story');
+  refreshAllStats();
+  const title = document.getElementById('story-title');
+  const body = document.getElementById('story-body');
+  const choices = document.getElementById('story-choices');
+  choices.innerHTML = '';
+
+  if (id === 'beat1') {
+    title.textContent = 'После первой крови';
+    body.innerHTML = state.path === 'public'
+      ? `<p>К вечеру в чатах кампуса уже мем: парень в позе эмбриона и твоя тень. Кто-то пишет «боллбастерша». Кто-то — «сука». Тебе нравятся оба слова.</p>
+         <p style="margin-top:.6rem">Ты чувствуешь, как растёт аппетит. Спортзал. Вечеринки. Нужны новые яйца — и свидетели.</p>`
+      : `<p>В тишине комнаты ты ещё раз проводишь носком по опухшей мошонке своей первой жертвы. Он дёргается во сне. Ты улыбаешься.</p>
+         <p style="margin-top:.6rem">Публичность — для слабаков. Настоящая жестокость любит закрытые двери. Но мышцы качков тоже зовут.</p>`;
+    const b = document.createElement('button');
+    b.textContent = 'Дальше';
+    b.onclick = () => { state.chapter = Math.max(state.chapter, 1); save(); showHub(); };
+    choices.appendChild(b);
+  } else if (id === 'beat2') {
+    title.textContent = 'Имя, которое боятся';
+    body.innerHTML = `<p>Три трофея. Три пары яиц, которые больше не будут прежними. Слухи густеют.</p>
+      <p style="margin-top:.6rem">${state.path === 'public'
+        ? 'На вечеринках тебя узнают. Парни отходят к стенам. Девушки поднимают тосты. Репутация — огонь.'
+        : 'В подполье уже шепчут про «ту, что ломает молча». Клуб откроет двери раньше, чем ты думала.'}</p>
+      <p style="margin-top:.6rem;color:var(--gold)">Скоро Арена. Но сначала — добери трофеи и жестокость.</p>`;
+    const b = document.createElement('button');
+    b.textContent = 'Я не останавливаюсь';
+    b.onclick = () => { save(); showHub(); };
+    choices.appendChild(b);
+  } else if (id === 'beat3') {
+    title.textContent = 'Перед финалом';
+    body.innerHTML = `<p>Арена ждёт. Виктор — последний, кто считает себя непобедимым. Толпа хочет крови. Точнее — хочет видеть, как чемпион блюёт от удара каблуком в яйца.</p>
+      <p style="margin-top:.6rem">Твоя жестокость: <b>${state.cruelty}</b>. Репутация: <b>${state.reputation}</b>. Трофеи: <b>${state.trophies}</b>.</p>
+      <p style="margin-top:.6rem">Империя паха либо станет фактом — либо слухом. Ты знаешь, чем всё кончится.</p>`;
+    const b = document.createElement('button');
+    b.textContent = 'К Арене';
+    b.onclick = () => {
+      if (!state.locationsUnlocked.includes('arena')) state.locationsUnlocked.push('arena');
+      state.chapter = 4;
+      save();
+      openLocation('arena');
+    };
+    choices.appendChild(b);
+  }
+}
+
+/* ---------- FINALE ---------- */
+function startFinale() {
+  if (state.stamina < 20) {
+    toast('Нужно хотя бы 20 выносливости для финала. Отдохни.');
+    return;
+  }
+  state.flags.arenaIntro = true;
+  showScreen('story');
+  refreshAllStats();
+  document.getElementById('story-title').textContent = 'Арена. Финал.';
+  document.getElementById('story-body').innerHTML = `
+    <p>Свет бьёт в глаза. Круг из людей. В центре — Виктор, чемпион подполья, в тонких шортах. Он ухмыляется, но пальцы дрожат.</p>
+    <p style="margin-top:.6rem">Ведущий орёт: «Боллбастерша против Железного паха! Правила просты — пах. Побеждает та, кто заставит его ползать.»</p>
+    <p style="margin-top:.6rem;color:var(--accent2)">Ты выходишь. Толпа ревёт. Империя начинается здесь.</p>
+  `;
+  document.getElementById('story-choices').innerHTML = `
+    <button onclick="beginEncounter('victor')">Начать финальный бой</button>
+    <button class="ghost" onclick="showHub()">Ещё не сейчас</button>
+  `;
+}
+
+function resolveFinale() {
+  state.finaleDone = true;
+  state.chapter = 4;
+  let endingType = 'empire';
+  if (state.cruelty >= 70 && state.reputation >= 50) endingType = 'legend';
+  else if (state.path === 'public' && state.reputation >= 40) endingType = 'public_queen';
+  else if (state.path === 'private' && state.cruelty >= 60) endingType = 'private_empress';
+  else if (state.trophies >= 6) endingType = 'collector';
+  state.flags.endingType = endingType;
+  save();
+  showEndingScreen(endingType);
+}
+
+function showEndingScreen(type) {
+  showScreen('ending');
+  const box = document.getElementById('ending-box');
+  const endings = {
+    legend: {
+      title: 'Концовка: Легенда паха',
+      text: `Жестокость ${state.cruelty}. Репутация ${state.reputation}. Виктор ползает у твоих ног, яйца — синие раздавленные фрукты. Толпа скандирует твоё имя. Кампус, зал, вечеринки, клуб — всё твоё. Мужчины переходят улицу, завидев каблуки. Ты не просто боллбастерша. Ты закон.`
+    },
+    public_queen: {
+      title: 'Концовка: Королева публичного позора',
+      text: `Каждое сломанное яйцо было спектаклем. Видео, мемы, тосты. Виктор рыдает на арене, пока камеры пишут. Твоя репутация — ядерная. Империя построена из чужого стыда — и он вечен.`
+    },
+    private_empress: {
+      title: 'Концовка: Императрица тишины',
+      text: `Никто не слышал самых страшных всхлипов — только ты. В закрытых комнатах ты превратила мужчин в дрожащее мясо. Виктор сдался шёпотом. Жестокость — твоя религия. Империя шепчет твоё имя в темноте.`
+    },
+    collector: {
+      title: 'Концовка: Коллекционерша трофеев',
+      text: `Все они в журнале. Сломанные. Подчинившиеся. С уничтоженной гордостью. Виктор — последний экспонат. Ты пересчитываешь трофеи и улыбаешься: коллекция ещё будет расти.`
+    },
+    empire: {
+      title: 'Концовка: Империя паха',
+      text: `Арена стихает. Виктор больше не чемпион — он лужа слёз и тошноты у твоих ног. Ты поднимаешь руку. Толпа орёт. Кампус будет помнить. Спортзал будет дрожать. Вечеринки — замирать. Клуб — преклоняться. Империя паха провозглашена.`
+    }
+  };
+  const e = endings[type] || endings.empire;
+  const journalBits = state.journal.map(j => `<li><b>${j.npc}</b> — ${endingLabel(j.ending)}</li>`).join('');
+  box.innerHTML = `
+    <h2>${e.title}</h2>
+    <p style="margin-top:.75rem">${e.text}</p>
+    <h3 style="margin-top:1.2rem">Трофеи (${state.trophies})</h3>
+    <ul style="margin-left:1.2rem;color:var(--muted)">${journalBits || '<li>Пусто</li>'}</ul>
+    <p style="margin-top:1rem;color:var(--gold)">Жестокость: ${state.cruelty} · Репутация: ${state.reputation} · Путь: ${state.path === 'public' ? 'Публичный позор' : 'Частная пытка'}</p>
+  `;
+}
+
+/* ---------- JOURNAL ---------- */
+function showJournal() {
+  showScreen('journal');
+  refreshAllStats();
+  const body = document.getElementById('journal-body');
+  if (!state.journal.length) {
+    body.innerHTML = '<div class="card"><p style="color:var(--muted)">Пока пусто. Иди ломай кого-нибудь.</p></div>';
+    return;
+  }
+  body.innerHTML = state.journal.map(j => `
+    <div class="card">
+      <h3>${j.npc} <span class="badge broken">${endingLabel(j.ending)}</span></h3>
+      <p style="color:var(--muted);font-size:.9rem">${LOCATIONS[j.loc] ? LOCATIONS[j.loc].name : j.loc}</p>
+      <p style="margin-top:.4rem">${j.note}</p>
+    </div>
+  `).join('');
+}
+
+/* ---------- BOOT ---------- */
+function boot() {
+  updateContinueBtn();
+  showScreen('menu');
+}
+
+boot();
+
+// Expose for inline handlers
+window.startNewGame = startNewGame;
+window.continueGame = continueGame;
+window.showAbout = showAbout;
+window.resetSave = resetSave;
+window.showHub = showHub;
+window.saveAndMenu = saveAndMenu;
+window.showJournal = showJournal;
+window.choosePath = choosePath;
+window.beginEncounter = beginEncounter;
+window.startFinale = startFinale;
+</script>
+</body>
+</html>

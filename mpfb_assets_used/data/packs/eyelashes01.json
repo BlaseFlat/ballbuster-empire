@@ -1,0 +1,67 @@
+{
+    "mindfront_eyelashes_01": {
+        "author": "Mindfront",
+        "category": "Eyelashes",
+        "changed": "2019-09-15",
+        "created": "2019-09-15",
+        "description": "Mesh high poly eyelashes as an alternative to low poly textured. Instead of using Blender particle eyelashes I decided to make them as mesh to be reusable through MakeHuman. Each hair is non-manifold triangular and goes about 1 mm into the head to avoid visible gaps when posing. No texture is needed but they are UV-unwrapped project from view. The preview render is on a default neutral character using subsurf x1 and a simple cycles material.",
+        "license": "CC0",
+        "original_author": "",
+        "original_source": "",
+        "source": "http://www.makehumancommunity.org/node/1978",
+        "thumbnail": "mindfront_eyelashes_01.png",
+        "type": "clothes"
+    },
+    "mindfront_eyelashes_02": {
+        "author": "Mindfront",
+        "category": "Eyelashes",
+        "changed": "2019-09-15",
+        "created": "2019-09-15",
+        "description": "Mesh high poly eyelashes as an alternative to low poly textured. Instead of using Blender particle eyelashes I decided to make them as mesh to be reusable through MakeHuman. Each hair is non-manifold triangular and goes about 1 mm into the head to avoid visible gaps when posing. No texture is needed but they are UV-unwrapped project from view. The preview render is on a default neutral character using subsurf x1 and a simple cycles material.",
+        "license": "CC0",
+        "original_author": "",
+        "original_source": "",
+        "source": "http://www.makehumancommunity.org/node/1979",
+        "thumbnail": "mindfront_eyelashes_02.png",
+        "type": "clothes"
+    },
+    "mindfront_eyelashes_03": {
+        "author": "Mindfront",
+        "category": "Eyelashes",
+        "changed": "2019-09-15",
+        "created": "2019-09-15",
+        "description": "Mesh high poly eyelashes as an alternative to low poly textured. Instead of using Blender particle eyelashes I decided to make them as mesh to be reusable through MakeHuman. Each hair is non-manifold triangular and goes about 1 mm into the head to avoid visible gaps when posing. No texture is needed but they are UV-unwrapped project from view. The preview render is on a default neutral character using subsurf x1 and a simple cycles material.",
+        "license": "CC0",
+        "original_author": "",
+        "original_source": "",
+        "source": "http://www.makehumancommunity.org/node/1980",
+        "thumbnail": "mindfront_eyelashes_03.png",
+        "type": "clothes"
+    },
+    "mindfront_eyelashes_04": {
+        "author": "Mindfront",
+        "category": "Eyelashes",
+        "changed": "2019-09-15",
+        "created": "2019-09-15",
+        "description": "Mesh high poly eyelashes as an alternative to low poly textured. Instead of using Blender particle eyelashes I decided to make them as mesh to be reusable through MakeHuman. Each hair is non-manifold triangular and goes about 1 mm into the head to avoid visible gaps when posing. No texture is needed but they are UV-unwrapped project from view. The preview render is on a default neutral character using subsurf x1 and a simple cycles material.",
+        "license": "CC0",
+        "original_author": "",
+        "original_source": "",
+        "source": "http://www.makehumancommunity.org/node/1981",
+        "thumbnail": "mindfront_eyelashes_04.png",
+        "type": "clothes"
+    },
+    "mindfront_eyelashes_05": {
+        "author": "Mindfront",
+        "category": "Eyelashes",
+        "changed": "2019-09-15",
+        "created": "2019-09-15",
+        "description": "Mesh high poly eyelashes as an alternative to low poly textured. Instead of using Blender particle eyelashes I decided to make them as mesh to be reusable through MakeHuman. Each hair is non-manifold triangular and goes about 1 mm into the head to avoid visible gaps when posing. No texture is needed but they are UV-unwrapped project from view. The preview render is on a default neutral character using subsurf x1 and a simple cycles material.",
+        "license": "CC0",
+        "original_author": "",
+        "original_source": "",
+        "source": "http://www.makehumancommunity.org/node/1982",
+        "thumbnail": "mindfront_eyelashes_05.png",
+        "type": "clothes"
+    }
+}

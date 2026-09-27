@@ -1,0 +1,157 @@
+{
+ "name": "Guy",
+ "phenotype": {
+  "gender": 1.0,
+  "age": 0.5,
+  "muscle": 0.5,
+  "weight": 0.38,
+  "height": 0.55,
+  "proportions": 0.65,
+  "cupsize": 0.5,
+  "firmness": 0.5,
+  "race": {
+   "caucasian": 0.85,
+   "asian": 0.05,
+   "african": 0.1
+  }
+ },
+ "targets": {
+  "measure-waist-circ-decr": 0.2
+ },
+ "eyes": "high-poly.mhclo",
+ "eyebrows": "eyebrow001.mhclo",
+ "eyelashes": "eyelashes01.mhclo",
+ "teeth": "teeth_base.mhclo",
+ "hair": "short04.mhclo",
+ "skin": "young_caucasian_male.mhmat",
+ "skin_tint": [
+  1.0,
+  0.95,
+  0.9,
+  1.0
+ ],
+ "hair_tint": [
+  0.45,
+  0.38,
+  0.32
+ ],
+ "clothes": [
+  "toigo_basic_tucked_t-shirt.mhclo",
+  "punkduck_running_shoes_01.mhclo"
+ ],
+ "materials": {
+  "punkduck_running_shoes_01": {
+   "name": "M_shoes",
+   "obj": "outfit_street_shoes",
+   "tint": [
+    0.35,
+    0.35,
+    0.38
+   ],
+   "rough": 0.6,
+   "size": 1024
+  },
+  "toigo_basic_tucked": {
+   "name": "M_shirt",
+   "obj": "outfit_street_shirt",
+   "tint": [
+    0.9,
+    0.9,
+    0.93
+   ],
+   "sat": 0.0,
+   "rough": 0.85,
+   "size": 1024
+  },
+  "short04": {
+   "name": "M_hair",
+   "obj": "hair",
+   "tint": [
+    0.5,
+    0.4,
+    0.33
+   ],
+   "rough": 0.5,
+   "alpha": true,
+   "size": 1024
+  }
+ },
+ "outfit_map": {
+  "toigo_basic_tucked_t-shirt": "street_shirt",
+  "punkduck_running_shoes_01": "street_shoes"
+ },
+ "expressions": {
+  "pain": {
+   "eye-left-closure": 0.55,
+   "eye-right-closure": 0.55,
+   "eyebrows-left-inner-up": 0.9,
+   "eyebrows-right-inner-up": 0.9,
+   "mouth-open": 0.35,
+   "mouth-retraction": 0.6,
+   "nose-left-elevation": 0.5,
+   "nose-right-elevation": 0.5
+  },
+  "agony": {
+   "eye-left-closure": 0.95,
+   "eye-right-closure": 0.95,
+   "eyebrows-left-inner-up": 1.0,
+   "eyebrows-right-inner-up": 1.0,
+   "mouth-open": 0.8,
+   "mouth-retraction": 0.8,
+   "nose-left-elevation": 0.8,
+   "nose-right-elevation": 0.8,
+   "neck-platysma": 0.6
+  },
+  "shock": {
+   "eye-left-opened-up": 0.9,
+   "eye-right-opened-up": 0.9,
+   "eyebrows-left-up": 0.8,
+   "eyebrows-right-up": 0.8,
+   "mouth-open": 0.7
+  },
+  "smug": {
+   "mouth-corner-puller": 0.35,
+   "eye-left-slit": 0.2,
+   "eye-right-slit": 0.2
+  },
+  "blink": {
+   "eye-left-closure": 1.0,
+   "eye-right-closure": 1.0
+  }
+ },
+ "height_m": 1.8,
+ "mask_json": "/workspace/bb3d/out/guy_masks.json",
+ "out_blend": "/workspace/bb3d/out/guy.blend",
+ "gen_clothes": [
+  {
+   "obj": "outfit_street_pants",
+   "mat": "M_pants",
+   "waist": 0.3,
+   "hem": 2.02,
+   "slit": 0.0,
+   "slit_w": 0.5,
+   "inner_drop": 0.0,
+   "offset": 0.011,
+   "thick": 0.004,
+   "band": 0.12,
+   "cuff": 0.12,
+   "smooth": 6,
+   "min_ok": 2,
+   "color": [
+    0.012,
+    0.012,
+    0.014
+   ],
+   "band_color": [
+    0.008,
+    0.008,
+    0.009
+   ]
+  }
+ ],
+ "zones": {
+  "street_shirt": "top",
+  "street_pants": "bottom",
+  "street_shoes": "feet"
+ }
+}

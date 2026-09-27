@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core';
+const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage(); await page.setViewport({ width: 480, height: 270 });
+page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+await page.goto('http://localhost:8123/?x=' + Date.now());
+await page.waitForFunction(() => window.__bb && window.__bb.mode === 'menu', { timeout: 180000 });
+console.log(JSON.stringify(await page.evaluate(() => window.__bb.contact)));
+await page.evaluate(() => { const G = window.__bb; G.startGame(); G.goTo(0); G.enterFight(G.guys[0]); G.attack('kick'); });
+await page.waitForFunction(() => window.__bb.fight.attack && window.__bb.fight.attack.contactDone, { timeout: 120000 });
+console.log(JSON.stringify(await page.evaluate(() => ({ tl: window.__bb.fight.guy.timeline, dist: window.__bb.fight.dist, clean: window.__bb.fight.attack.clean }))));
+await browser.close();

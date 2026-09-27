@@ -1,0 +1,13 @@
+import puppeteer from 'puppeteer-core';
+const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage(); await page.setViewport({ width: 1280, height: 720 });
+page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+page.on('console', (m) => { if (/merged|warn|error/i.test(m.text()) && !/404/.test(m.text())) console.log(m.text()); });
+await page.goto('http://localhost:8123/?debug');
+await page.waitForFunction(() => window.__bb && window.__bb.mode === 'menu', { timeout: 180000 });
+await page.evaluate(() => { const G = window.__bb; G.lockDPR = true; G.startGame(); G.goTo(0); G.enterFight(G.guys[0]); });
+await page.waitForFunction(() => window.__bb.fight.snapT >= 1 && window.__bb.renderInfo, { timeout: 120000 });
+await page.evaluate(() => new Promise((r) => { const t = window.__bb.realTime; const iv = setInterval(() => { if (window.__bb.realTime > t + 1.5) { clearInterval(iv); r(); } }, 50); }));
+console.log(JSON.stringify(await page.evaluate(() => window.__bb.renderInfo)));
+await page.screenshot({ path: '/workspace/ballbuster-3d-shots/local/q_fight_cam.png' });
+await browser.close();

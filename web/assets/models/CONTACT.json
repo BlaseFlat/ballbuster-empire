@@ -1,0 +1,233 @@
+{
+ "fps": 30,
+ "units": "meters; three.js / glTF Y-up coordinates",
+ "rest_facing": "Both GLBs face +Z at rest (glTF forward). Rusana's root/origin stays at her feet; all strike motion is in-place (the knee step-in/step-out happens inside the pose, root does not move).",
+ "placement": {
+  "note": "Same placement for both strikes (no repositioning between kick and knee). Put the guy DISTANCE m in front of Rusana along her facing, turned 180 deg. Both roots on the floor, no lateral offset.",
+  "distance_m": 0.667,
+  "distance_is": "object root to object root (what the engine sets)",
+  "pelvis_to_pelvis_m": 0.64,
+  "valid_pelvis_range_m": [
+   0.62,
+   0.66
+  ],
+  "lateral_offset_m": 0.0,
+  "guy_yaw_relative_to_rusana_deg": 180,
+  "example_threejs": "rus.position.set(0,0,0); rus.rotation.y = 0; guy.position.set(0,0,0.667); guy.rotation.y = Math.PI;",
+  "general": "guy.position = rus.position + forward(rus.rotation.y) * 0.667; guy.rotation.y = rus.rotation.y + Math.PI",
+  "guy_stance": "feet 0.58 m apart, groin (crotch seam) at 0.794 m, butt plane 0.095 m behind his pelvis"
+ },
+ "guy_sync": "Before a strike the guy plays 'idle' (kick) or 'clinched' (knee, started together with rus_knee at t=0). At contact_time: hit-stop 0.06 s, then 'flinch' (kick) / 'flinch_knee' (knee) from t=0 with fade <=0.05 s. Their last frame == double_over f0, so chain double_over (optionally insert 'stun' loop first to extend the frozen beat).",
+ "kick_up": {
+  "clip": "rus_kick_up",
+  "duration_s": 0.733,
+  "frames": 22,
+  "starts_from": "fight stance at the placement distance (no step-in; no rus_approach clip needed)",
+  "pelvis_to_pelvis_at_contact_m": 0.64,
+  "contact_frame": 8,
+  "contact_time_s": 0.267,
+  "contact_window_s": [
+   0.25,
+   0.3
+  ],
+  "hold_frame": 9,
+  "hold_time_s": 0.3,
+  "retract": "f9 -> f13 back down the same arc (0.133 s), foot on floor f17, stance f22",
+  "keys": {
+   "f3 (0.10 s)": "support heel lifting (+2.8 cm), lean-back starts",
+   "f5 (0.167 s)": "chamber: knee 0.56 m, thigh 43 deg below horizontal, shin vertical, heel +4.8 cm, lean back ~10 deg",
+   "f6-f7": "knee rises, shin swings forward-up from below",
+   "f8 (0.267 s)": "contact",
+   "f9": "hold"
+  },
+  "contact_point_m": "instep at groin center, 0.762 m high = 3.2 cm below his crotch seam; toe/shoe stays 10 cm in front of his butt plane",
+  "measured_at_contact": {
+   "shin_deg_to_horizontal": 37.0,
+   "foot_point_deg": 159.5,
+   "knee_inner_deg": 90.6,
+   "thigh_deg_above_horizontal": 51,
+   "torso_lean_back_deg": 10.6,
+   "support_heel_rise_cm": 4.8
+  },
+  "rusana_crossfade_in_s": 0.1,
+  "guy_sequence": [
+   {
+    "clip": "idle",
+    "start_rel_contact_s": -0.267,
+    "note": "already playing"
+   },
+   {
+    "clip": "flinch",
+    "start_rel_contact_s": 0.0,
+    "note": "after 0.06 s hit-stop: pelvis snaps back 7 cm, knees cave, hands to groin (clip 0.067-0.20 s), then frozen beat / mouth open (0.20-0.40 s)"
+   },
+   {
+    "clip": "stun",
+    "start_rel_contact_s": 0.4,
+    "optional": true,
+    "note": "loop to lengthen the frozen beat"
+   },
+   {
+    "clip": "double_over",
+    "start_rel_contact_s": 0.4,
+    "real_time_with_hitstop_s": 0.46,
+    "note": "gradual fold + 0.30 m stagger back (see double_over_root_motion)"
+   }
+  ]
+ },
+ "knee": {
+  "clip": "rus_knee",
+  "duration_s": 1.0,
+  "frames": 30,
+  "starts_from": "fight stance at the same placement distance; she steps in (f0-f6, in-pose) to 0.33-0.34 m pelvis-to-pelvis, grabs behind his neck (pulls him down ~2.2 cm), knees, releases f16-f20, steps back to stance by f30",
+  "pelvis_to_pelvis_in_clinch_m": 0.34,
+  "contact_frame": 12,
+  "contact_time_s": 0.4,
+  "contact_window_s": [
+   0.4,
+   0.5
+  ],
+  "peak_frame": 15,
+  "peak_time_s": 0.5,
+  "drive": "0.10 s upward drive after contact (f12->f15), knee drops f16-f19",
+  "contact_point_m": "right kneecap into groin from below; knee joint 0.72 m at contact, 0.765 m at peak (kneecap top ~0.80 m); his crotch rises to ~0.82 as he goes up on his toes",
+  "measured_at_contact": {
+   "hip_flex_deg": 81,
+   "hip_flex_peak_deg": 88,
+   "knee_inner_deg": 38,
+   "torso_lean_forward_deg": 6.6,
+   "support_heel_rise_cm": 3.8,
+   "knee_forward_travel_from_0.49m_to_peak_cm": 14.6
+  },
+  "rusana_crossfade_in_s": 0.1,
+  "guy_sequence": [
+   {
+    "clip": "clinched",
+    "start_rel_contact_s": -0.4,
+    "note": "start together with rus_knee (t=0); neck pulled down, ends exactly at contact"
+   },
+   {
+    "clip": "flinch_knee",
+    "start_rel_contact_s": 0.0,
+    "note": "after hit-stop: hips back, rises onto toes 3.5 cm, hands go out then to groin, knees cave late (after her knee drops), frozen beat to 0.40 s"
+   },
+   {
+    "clip": "stun",
+    "start_rel_contact_s": 0.4,
+    "optional": true
+   },
+   {
+    "clip": "double_over",
+    "start_rel_contact_s": 0.4,
+    "real_time_with_hitstop_s": 0.46,
+    "note": "Rusana is stepping back at the same time (rus_knee f23-f30)"
+   }
+  ]
+ },
+ "walk": {
+  "clip": "rus_walk",
+  "in_place": true,
+  "cycle_s": 1.067,
+  "stride_m": 0.83,
+  "speed_mps_no_foot_slide": 0.78,
+  "note": "Scale mixer timeScale = moveSpeed / 0.78 for other speeds."
+ },
+ "clips": {
+  "rusana.glb": {
+   "rus_idle": [
+    2.133,
+    "loop"
+   ],
+   "rus_walk": [
+    1.067,
+    "loop"
+   ],
+   "rus_kick_up": [
+    0.733,
+    "once"
+   ],
+   "rus_knee": [
+    1.0,
+    "once"
+   ],
+   "rus_victory": [
+    2.8,
+    "once"
+   ]
+  },
+  "guy.glb": {
+   "idle": [
+    1.733,
+    "loop"
+   ],
+   "clinched": [
+    0.4,
+    "once, NEW: pulled down by the neck before the knee"
+   ],
+   "flinch": [
+    0.4,
+    "once (kick reaction; was 0.6)"
+   ],
+   "flinch_knee": [
+    0.4,
+    "once, NEW: knee reaction, rises onto toes"
+   ],
+   "stun": [
+    0.533,
+    "loop, NEW optional frozen beat"
+   ],
+   "double_over": [
+    1.0,
+    "once, holds last pose; includes 0.30 m stagger back"
+   ],
+   "knees": [
+    1.0,
+    "once, holds last pose"
+   ],
+   "floor": [
+    1.467,
+    "loop"
+   ],
+   "tap": [
+    1.133,
+    "once"
+   ],
+   "hurt": [
+    0.933,
+    "loop"
+   ],
+   "getup": [
+    1.0,
+    "once"
+   ]
+  }
+ },
+ "morph_targets": {
+  "Rusana_body": [
+   "cold",
+   "effort",
+   "smirk",
+   "blink"
+  ],
+  "Guy_body": [
+   "pain",
+   "agony",
+   "shock",
+   "smug",
+   "blink"
+  ],
+  "note": "Expression weights are keyed inside every clip (weights channel on the *_body node), so AnimationMixer drives faces automatically."
+ },
+ "loading": "Meshopt-compressed + WebP textures: GLTFLoader needs loader.setMeshoptDecoder(MeshoptDecoder) (three/examples/jsm/libs/meshopt_decoder.module.js).",
+ "outfit_masking": "Body mesh carries a custom vertex attribute _ZONE (three.js: geometry.attributes._zone, RGBA zone codes; NOT used as vertex color) (see out/*_masks.json) for hiding skin under clothes if outfits are swapped.",
+ "playback": "Clips marked 'once' must use action.setLoop(THREE.LoopOnce) + clampWhenFinished=true. Loop clips: rus_idle, rus_walk, idle, stun, floor, hurt. Each clip's glTF extras carry {loop, fps, frames, duration}.",
+ "version": "v2 (groin-strike expert review, 2026-09-27)",
+ "hit_stop": {
+  "duration_s": 0.06,
+  "note": "Engine-side: at contact_time freeze BOTH mixers (timeScale 0) for 0.06 s, then resume. Clip timings below are clip time; with hit-stop, real time after contact = clip time + 0.06 s. flinch/flinch_knee also hold f0->f1 (1 frame) to match Rusana's contact hold."
+ },
+ "double_over_root_motion": {
+  "stagger_back_m": 0.3,
+  "note": "double_over contains 0.30 m of backward travel (two steps) in the skeleton. When it finishes, move the guy object 0.30 m back along HIS facing (away from Rusana: guy.position += forward(guy.rotation.y) * -0.30) and then play knees/hurt/getup/floor/tap, which are authored in place from that spot."
+ }
+}

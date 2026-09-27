@@ -1,0 +1,305 @@
+{
+ "kick": {
+  "D": 0.64,
+  "guy_m": -0.6666,
+  "contact_f": 8,
+  "end_f": 22,
+  "keys": {
+   "3": {
+    "flex": 18,
+    "knee": 160,
+    "point": 20,
+    "rise": 0.02,
+    "lean": 6,
+    "arms": 0.6,
+    "ankle_x": null,
+    "shape": {
+     "effort": 0.5,
+     "cold": 0.3
+    }
+   },
+   "5": {
+    "flex": 47,
+    "knee": 134,
+    "point": 35,
+    "rise": 0.04,
+    "lean": 14,
+    "arms": 1.0,
+    "ankle_x": -0.05,
+    "shape": {
+     "effort": 0.8
+    }
+   },
+   "6": {
+    "flex": 76,
+    "knee": 112,
+    "point": 44,
+    "rise": 0.04,
+    "lean": 16,
+    "dy": 0.02,
+    "ankle_x": -0.03,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "7": {
+    "flex": 104,
+    "knee": 102,
+    "point": 48,
+    "rise": 0.04,
+    "lean": 17,
+    "dy": 0.04,
+    "ankle_x": -0.01,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "8": {
+    "flex": 127.5,
+    "knee": 110,
+    "point": 50,
+    "rise": 0.04,
+    "lean": 18,
+    "dy": 0.06,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "9": {
+    "flex": 127.5,
+    "knee": 110,
+    "point": 50,
+    "rise": 0.04,
+    "lean": 18,
+    "dy": 0.06,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "10": {
+    "flex": 106,
+    "knee": 102,
+    "point": 48,
+    "rise": 0.04,
+    "lean": 17,
+    "dy": 0.04,
+    "ankle_x": -0.01,
+    "shape": {
+     "effort": 0.8
+    }
+   },
+   "11": {
+    "flex": 78,
+    "knee": 110,
+    "point": 44,
+    "rise": 0.04,
+    "lean": 16,
+    "dy": 0.02,
+    "ankle_x": -0.03,
+    "shape": {
+     "effort": 0.6
+    }
+   },
+   "13": {
+    "flex": 47,
+    "knee": 134,
+    "point": 35,
+    "rise": 0.035,
+    "lean": 12,
+    "ankle_x": -0.05,
+    "shape": {
+     "effort": 0.4,
+     "smirk": 0.2
+    }
+   },
+   "17": {
+    "flex": 18,
+    "knee": 160,
+    "point": 15,
+    "rise": 0.015,
+    "lean": 5,
+    "arms": 0.4,
+    "ankle_x": null,
+    "shape": {
+     "smirk": 0.3,
+     "cold": 0.3
+    }
+   }
+  }
+ },
+ "knee": {
+  "D": 0.33,
+  "guy_m": -0.666,
+  "contact_f": 12,
+  "end_f": 30,
+  "sup_y": -0.06,
+  "stance_dy": 0.0,
+  "hand_off": [
+   0.1,
+   0.1,
+   0.22
+  ],
+  "keys": {
+   "3": {
+    "flex": 0,
+    "knee": 170,
+    "point": 0,
+    "rise": 0.0,
+    "lean": 3,
+    "dy": -0.19,
+    "step": "l_mid",
+    "grip": 0.35,
+    "shape": {
+     "cold": 0.7,
+     "effort": 0.3
+    }
+   },
+   "6": {
+    "flex": 18,
+    "knee": 110,
+    "point": 30,
+    "rise": 0.01,
+    "lean": 5,
+    "dy": -0.31,
+    "grip": 1.0,
+    "shape": {
+     "effort": 0.6
+    }
+   },
+   "9": {
+    "flex": 58,
+    "knee": 40,
+    "point": 60,
+    "rise": 0.03,
+    "lean": 7,
+    "dy": -0.31,
+    "shape": {
+     "effort": 0.9
+    }
+   },
+   "12": {
+    "flex": 81,
+    "knee": 38,
+    "point": 60,
+    "rise": 0.03,
+    "lean": 7,
+    "dy": -0.31,
+    "pel_x": 6,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "15": {
+    "flex": 88,
+    "knee": 36,
+    "point": 60,
+    "rise": 0.035,
+    "lean": 8,
+    "dy": -0.31,
+    "pel_x": 7,
+    "shape": {
+     "effort": 1.0
+    }
+   },
+   "17": {
+    "flex": 52,
+    "knee": 44,
+    "point": 55,
+    "rise": 0.02,
+    "lean": 0,
+    "dy": -0.28,
+    "grip": 0.45,
+    "shape": {
+     "effort": 0.6
+    }
+   },
+   "20": {
+    "flex": 25,
+    "knee": 100,
+    "point": 30,
+    "rise": 0.005,
+    "lean": -3,
+    "dy": -0.16,
+    "grip": 0.0,
+    "shape": {
+     "effort": 0.3,
+     "smirk": 0.3
+    }
+   },
+   "23": {
+    "flex": 0,
+    "knee": 170,
+    "point": 0,
+    "rise": 0.0,
+    "lean": 0,
+    "dy": -0.08,
+    "step": "r_back",
+    "grip": 0.0,
+    "shape": {
+     "smirk": 0.4,
+     "cold": 0.3
+    }
+   },
+   "26": {
+    "flex": 0,
+    "knee": 170,
+    "point": 0,
+    "rise": 0.0,
+    "lean": 1,
+    "dy": -0.04,
+    "step": "l_back_mid",
+    "grip": 0.0,
+    "shape": {
+     "smirk": 0.5,
+     "cold": 0.4
+    }
+   },
+   "16": {
+    "flex": 74,
+    "knee": 38,
+    "point": 60,
+    "rise": 0.03,
+    "lean": -3,
+    "dy": -0.29,
+    "grip": 0.75,
+    "hz_extra": 0.0,
+    "shape": {
+     "effort": 0.9
+    }
+   },
+   "19": {
+    "flex": 40,
+    "knee": 70,
+    "point": 45,
+    "rise": 0.01,
+    "lean": -1,
+    "dy": -0.22,
+    "grip": 0.15,
+    "shape": {
+     "effort": 0.4
+    }
+   },
+   "14": {
+    "flex": 86,
+    "knee": 37,
+    "point": 60,
+    "rise": 0.033,
+    "lean": 8,
+    "dy": -0.31,
+    "pel_x": 7,
+    "shape": {
+     "effort": 1.0
+    }
+   }
+  },
+  "step_in": 0.14,
+  "stance_D": 0.64,
+  "hand_pole": [
+   2.0,
+   0.0,
+   3.0,
+   10,
+   0.4
+  ]
+ }
+}
