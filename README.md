@@ -49,7 +49,16 @@ three.js r169 vendored in `vendor/three` (MIT). WebGL2, sRGB output, ACES filmic
 HDRI image-based lighting (PMREM), EffectComposer: MSAA×4 half-float target → UnrealBloom (subtle) → OutputPass.
 Adaptive resolution (DPR 0.7–1.75) keeps ~60 fps. Cache-busting: `?v=N` on every module in the import map (`VERSION`).
 
+## Sound (v6)
+- `js/audio.js` — Web Audio: buffers preloaded during the loading screen (decoded offline, AudioContext created on the first click/key → no autoplay warnings), buses `impact / voice / rus / step / amb / music` → compressor, room-reverb send (runtime IR), game-time scheduler so delays follow the fight timeline (hit-stop included).
+- Hooks: contact frame (CONTACT.json) → layered impact (body thud + punch + sub + flesh slap + soft; finisher adds big punch/slap/boom; thigh miss → light slap); guy reaction clips → vocals (flinch/flinch_knee → gasp/grunt 30–80 ms after the clip starts, finisher → scream, double_over → choked groan/wheeze, knees → whimper, getup → strained whimper, floor → moaning that repeats and fades, tap → whimper); one voice per guy with priorities, no immediate repeats, per-guy pitch.
+- Rusana (TTS, few & optional): fight start (75 %), after a clean hit (40 %, ≥5 s apart), on the finishing strike, on victory. Footsteps from her foot bones (mats vs rubber floor). Ambience: room tone + distant muffled music (ducked in fights).
+- **M** or the speaker icon (bottom-right) mutes; hover it for the volume slider. Stored in `localStorage["bb3d.audio"]`.
+- Rebuild the set: `python3 tools/audio/build_audio.py` (needs numpy, scipy, soundfile, ffmpeg; sources cached in `$BB_AUDIO_SRC`). All sources/licenses: [CREDITS.md](CREDITS.md).
+
 ## Credits / licenses
+See also [CREDITS.md](CREDITS.md) (full list incl. every sound).
+
 - three.js — MIT (`vendor/three/LICENSE`)
 - HDRI `gym_01` (1k) — Poly Haven, CC0 — https://polyhaven.com/a/gym_01
 - Textures (1k, recompressed) — Poly Haven, CC0: `rubber_tiles`, `red_brick`, `leather_red_02`, `concrete_floor_painted`, `wood_floor`, `painted_plaster_wall`

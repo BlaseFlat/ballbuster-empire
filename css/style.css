@@ -62,3 +62,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07060a;color:#f3eef
 #fps{position:fixed;right:8px;bottom:6px;font:12px monospace;opacity:.6;z-index:30}
 #err{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#300;border:1px solid #f55;padding:16px 22px;border-radius:10px;z-index:99;max-width:80vw}
 @media (max-width:700px){#menu{padding-left:5vw}.btn{width:240px}.fight-log{white-space:normal;width:90vw;text-align:center}}
+
+/* sound control (bottom-right): speaker toggles mute (M), slider appears on hover */
+.snd{position:fixed;right:16px;bottom:16px;z-index:40;display:flex;align-items:center;gap:8px;pointer-events:auto}
+.snd-btn{position:relative;width:42px;height:42px;border-radius:50%;background:var(--panel);border:1px solid var(--line);color:#f1e7ee;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(6px);transition:border-color .15s,color .15s}
+.snd-btn:hover{border-color:var(--red)}
+.snd-key{position:absolute;right:-3px;bottom:-3px;font:600 9px Rubik,sans-serif;background:#1c1520;border:1px solid var(--line);border-radius:4px;padding:0 3px;opacity:.8}
+.snd .snd-off{display:none}
+.snd.muted .snd-on{display:none}
+.snd.muted .snd-off{display:inline}
+.snd.muted .snd-btn{color:var(--red2);border-color:rgba(224,36,60,.6)}
+#snd-vol{width:0;opacity:0;transition:width .2s,opacity .2s;accent-color:var(--red)}
+.snd:hover #snd-vol,.snd:focus-within #snd-vol{width:96px;opacity:.9}
+#loading.active~.snd{display:none}
+#fps{bottom:64px}

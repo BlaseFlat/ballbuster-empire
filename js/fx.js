@@ -60,7 +60,10 @@ export class FX {
     el.className = 'popup ' + cls; el.textContent = text;
     el.style.left = screen.x + 'px'; el.style.top = screen.y + 'px';
     this.popEl.appendChild(el);
-    setTimeout(() => el.remove(), 950);
+    // removed when its CSS animation ends (works with the frame-stepped demo capture too); fallback for safety
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+    const kill = () => { if (!el.isConnected) return; if (window.__bb && window.__bb.manual) setTimeout(kill, 1500); else el.remove(); };
+    setTimeout(kill, 2500);
   }
 
   update(dt, realDt) {

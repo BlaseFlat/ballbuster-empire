@@ -97,6 +97,7 @@ export class Character {
     a.play();
     this.current = a;
     this.currentName = clip.name;
+    if (this.onPlay) this.onPlay(clip.name);
     return a;
   }
 

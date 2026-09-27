@@ -10,6 +10,7 @@ import { buildGym, collide } from '@bb/gym';
 import { Character } from '@bb/character';
 import { FX } from '@bb/fx';
 import { Bout, GUY_STATES } from '@bb/rules';
+import { GameAudio } from '@bb/audio';
 
 const $ = (s) => document.querySelector(s);
 const log = (...a) => console.log('[bb]', ...a);
@@ -85,6 +86,7 @@ async function loadAll() {
     (!manifest || manifest.contact) ? loadJSON('models/CONTACT.json') : Promise.resolve(null),
     (!manifest || manifest.meta) ? loadJSON('models/anim_meta.json') : Promise.resolve(null),
     document.fonts ? document.fonts.load('40px "Russo One"').catch(() => 0) : 0,
+    G.audio.preload(progress).catch((e) => console.warn('[bb] audio preload failed', e)),
     ...texJobs,
   ]);
   return { tex, hdr, rus, guy, contact, meta, manifest };
@@ -105,6 +107,8 @@ const G = {
   vel: new THREE.Vector3(), assetsInfo: {},
 };
 window.__bb = G;
+G.realTime = 0;
+G.audio = new GameAudio(() => G.realTime);
 
 // guy reaction sequence from CONTACT.json: strings or {clip|name, at|t|start_s|time_s} (seconds after contact)
 function parseSeq(seq) {
@@ -232,6 +236,7 @@ async function init() {
     c.home = new THREE.Vector3(...def.pos);
     const lab = document.createElement('div'); lab.className = 'npc-label'; lab.textContent = `${def.name}, ${def.age}`;
     $('#labels').appendChild(lab); c.label = lab;
+    c.onPlay = (clip) => guyVoice(c, clip);
     G.guys.push(c);
   }
   const gb = new THREE.Box3().setFromObject(G.guys[0].group); log('Guy bbox', gb.min.toArray().map((v) => v.toFixed(2)), gb.max.toArray().map((v) => v.toFixed(2)));
@@ -256,8 +261,24 @@ async function init() {
   }, 150);
 }
 
+// ---------------------------------------------------------------- sound UI (M / speaker icon), unlock on first gesture
+const unlockAudio = () => G.audio.unlock();
+for (const ev of ['pointerdown', 'keydown', 'touchend']) addEventListener(ev, unlockAudio, { capture: true, passive: true });
+function syncSoundUI() {
+  const a = G.audio, el = $('#snd'); if (!el) return;
+  el.classList.toggle('muted', a.muted || a.vol === 0);
+  $('#snd-vol').value = String(Math.round(a.vol * 100));
+  $('#snd-btn').title = (a.muted ? 'Включить звук' : 'Выключить звук') + ' (M)';
+}
+G.audio.onChange = syncSoundUI;
+$('#snd-btn').addEventListener('click', (e) => { e.stopPropagation(); e.currentTarget.blur(); G.audio.unlock(); G.audio.toggleMute(); });
+$('#snd-vol').addEventListener('input', (e) => { G.audio.unlock(); G.audio.setVolume(+e.target.value / 100); });
+$('#snd').addEventListener('pointerdown', (e) => e.stopPropagation());
+syncSoundUI();
+
 // ---------------------------------------------------------------- input
 addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM' && !e.repeat) { G.audio.toggleMute(); G.fx && G.fx.popup && G.fx.popup(G.audio.muted ? 'Звук выкл.' : 'Звук вкл.', { x: innerWidth - 90, y: innerHeight - 90 }, 'small'); }
   if (e.repeat && !['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) return;
   G.keys[e.code] = true;
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
@@ -379,6 +400,7 @@ function enterFight(guy) {
   UI.text('#fight-name', `${guy.def.name}, ${guy.def.age}`);
   UI.text('#f-log', guy.def.taunt);
   updateFightHud();
+  if (talk(0.75)) { G.audio.rus('rus_start', { delay: 0.45 }); f.lastLine = G.realTime; }
   log('fight start', guy.def.name);
 }
 
@@ -426,6 +448,7 @@ function attack(move) {
   const clean = G.forceClean !== undefined ? G.forceClean : Math.random() < CFG.cleanChance[move];
   const finishing = clean && f.bout.nextState === 'floor';   // floor → he taps out → victory
   f.attack = { move, ci, clean, finishing, contactDone: false, t0: G.time };
+  if (finishing && talk(0.85)) { G.audio.rus('rus_fin'); f.lastLine = G.realTime; }
   f.queued = null;
   f.dist = ci.dist; f.side = ci.side || 0; f.snapT = 0; f.snapDur = 0.15; f.rusFrom = rus.group.position.clone();
   rus.queue = [];
@@ -523,6 +546,10 @@ function toScreen(p) {
 function onContact(f) {
   const a = f.attack; a.contactDone = true;
   const res = f.bout.resolve(a.clean);
+  const fin = res.clean && (a.finishing || res.finished);
+  f.lastHit = { clean: res.clean, finishing: fin, move: a.move, next: res.next };
+  G.audio.impact(res.clean ? (fin ? 'fin' : a.move) : 'thigh');
+  if (res.clean && !fin && G.realTime - (f.lastLine ?? -99) > 5 && talk(0.4)) { G.audio.rus('rus_hit', { delay: 1.05 }); f.lastLine = G.realTime; }
   const p = strikePoint(a.move, new THREE.Vector3());
   const scr = toScreen(p);
   if (res.clean) {
@@ -615,7 +642,8 @@ function startVictory() {
   UI.show('#hud-fight', false);
   UI.text('#victory-text', f.guy.def.win);
   UI.text('#victory-stats', `Удары: ${f.bout.hits} · Очки: ${f.bout.score} · Репутация +${gain} (всего ${G.rep})`);
-  setTimeout(() => { if (G.mode === 'victory') UI.show('#victory', true); }, 900);
+  G.victoryCardAt = G.realTime + 0.9;
+  G.audio.rus('rus_vic', { delay: 0.9 });
   UI.text('#rep-display', `Репутация: ${G.rep}`);
 }
 
@@ -663,13 +691,64 @@ function updateLabels() {
   }
 }
 
+// ---------------------------------------------------------------- sound hooks
+// probability gate for Rusana's lines (G.alwaysTalk = test hook)
+function talk(p) { return G.alwaysTalk || Math.random() < p; }
+
+// Guy vocals ride on his reaction clips, so they land exactly on the animation timeline:
+// flinch/flinch_knee (starts at contact + hit-stop) → gasp/grunt (+30–80 ms pain delay) or the scream on a finisher,
+// double_over → choked groan/wheeze, knees → whimper, getup → strained whimper, floor → moaning (repeats), tap → whimper.
+function guyVoice(g, clip) {
+  const A = G.audio, key = g.def.id, vr = g.def.voice || 1;
+  const n = String(clip).replace(/^guy_/, '');
+  const f = G.fight && G.fight.guy === g ? G.fight : null;
+  const hit = f && f.lastHit;
+  const r = () => vr * (0.97 + Math.random() * 0.06);
+  if (/^flinch/.test(n)) {
+    if (!hit) return;
+    if (hit.finishing) A.voice(key, 'v_scream', { delay: 0.05, rate: r() * 0.98, gain: 1 });
+    else if (hit.clean) A.voice(key, 'v_flinch', { delay: 0.03 + Math.random() * 0.05, rate: r(), gain: 0.95 });
+    else if (Math.random() < 0.7) A.voice(key, 'v_flinch', { delay: 0.05, rate: r() * 1.04, gain: 0.45 });
+  } else if (n === 'double_over') {
+    if (hit && hit.clean && !hit.finishing) A.voice(key, 'v_groan', { delay: 0.1, rate: r(), gain: 0.95 });
+  } else if (n === 'knees') {
+    if (hit && hit.clean) A.voice(key, 'v_whimper', { delay: 0.12, rate: r(), gain: 0.95 });
+  } else if (n === 'getup') {
+    if (Math.random() < 0.6) A.voice(key, 'v_whimper', { delay: 0.2, rate: r(), gain: 0.45 });
+  } else if (n === 'floor') {
+    if (!g.floorVoiced) { g.floorVoiced = true; A.voice(key, 'v_floor', { delay: 0.2, rate: r(), gain: 0.9 }); A.moan(key, { rate: vr, gain: 0.75, first: 3.4, max: 5 }); }
+  } else if (n === 'tap') {
+    A.voice(key, 'v_tap', { delay: 0.1, rate: r(), gain: 1 });
+  }
+}
+
+// footsteps from Rusana's foot bones (heel-down detection with hysteresis), surface = mats / rubber floor
+const _fv = new THREE.Vector3();
+function updateFootsteps(dt) {
+  const rus = G.rus; if (!rus || !rus.bones.foot_l) return;
+  const walking = /walk/.test(rus.currentName || '') && (G.mode === 'explore' || (G.mode === 'fight' && G.fight && G.fight.stepping));
+  const st = rus.steps || (rus.steps = { l: { armed: false, min: 0.2 }, r: { armed: false, min: 0.2 } });
+  const speed = G.mode === 'explore' ? Math.hypot(G.vel.x, G.vel.z) : 0.8;
+  for (const s of ['l', 'r']) {
+    const fs = st[s];
+    const h = rus.boneWorld('foot_' + s, _fv).y - rus.group.position.y;
+    fs.min = Math.min(fs.min + 0.03 * dt, h);
+    if (h > fs.min + 0.045) fs.armed = true;
+    else if (fs.armed && h < fs.min + 0.012) {
+      fs.armed = false;
+      if (walking && speed > 0.2) G.audio.footstep(G.gym.surfaceAt ? G.gym.surfaceAt(_fv.x, _fv.z) : 'mat', Math.min(1, 0.55 + speed * 0.3));
+    }
+  }
+}
+
 // ---------------------------------------------------------------- main loop
 const clock = new THREE.Clock();
 let fpsAcc = 0, fpsN = 0, fpsT = 0, qualT = 0;
-G.realTime = 0;
-function frame() {
-  const realDt = Math.min(clock.getDelta(), 1 / 20);
+function frame(fixedDt) {
+  const wallDt = clock.getDelta();
+  const realDt = fixedDt || Math.min(wallDt, 1 / 20);
   G.realTime += realDt;
+  G.audio.update();
   if (G.mode === 'loading') { return; }
   if (G.paused) { composer.render(0); return; }   // test hook: full freeze
   // time scale: hit-stop (freeze) > slow-mo > normal
@@ -714,6 +793,9 @@ function frame() {
       ch.blob.scale.setScalar(lying ? 1.9 : 0.95);
     }
   }
+  updateFootsteps(realDt);
+  G.audio.setBus('music', G.mode === 'fight' || G.mode === 'victory' ? 0.11 : 0.2, 1.2);
+  if (G.victoryCardAt && G.realTime >= G.victoryCardAt) { G.victoryCardAt = 0; if (G.mode === 'victory') UI.show('#victory', true); }
   G.gym.update(G.time, dt);
   G.fx.update(dt, realDt);
 
@@ -736,7 +818,9 @@ function adapt(fps) {
   else if (fps > 58 && dpr < maxDPR) nd = Math.min(maxDPR, dpr + 0.1);
   if (Math.abs(nd - dpr) > 0.01) { dpr = nd; renderer.setPixelRatio(dpr); onResize(); }
 }
-renderer.setAnimationLoop(frame);
+renderer.setAnimationLoop(() => { if (!G.manual) frame(); });
+// deterministic stepping for offline capture (demo video): G.manual = true; G.step(1/30)
+G.step = (dt = 1 / 30) => frame(dt);
 
 // test / automation hooks
 Object.assign(G, {

@@ -3,24 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="bb-version" content="5" />
+  <meta name="bb-version" content="6" />
   <meta name="rating" content="adult" />
   <title>Боллбастер: Империя паха — 3D (21+)</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2230%22 fill=%22%23e0243c%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-size=%2234%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22%3EБ%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/fonts.css?v=5" />
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/fonts.css?v=6" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
   <script type="importmap">
   {
     "imports": {
       "three": "./vendor/three/three.module.js",
       "three/addons/": "./vendor/three/addons/",
-      "@bb/config": "./js/config.js?v=5",
-      "@bb/loader": "./js/loader.js?v=5",
-      "@bb/gym": "./js/gym.js?v=5",
-      "@bb/character": "./js/character.js?v=5",
-      "@bb/fx": "./js/fx.js?v=5",
-      "@bb/rules": "./js/rules.js?v=5",
-      "@bb/main": "./js/main.js?v=5"
+      "@bb/config": "./js/config.js?v=6",
+      "@bb/loader": "./js/loader.js?v=6",
+      "@bb/gym": "./js/gym.js?v=6",
+      "@bb/character": "./js/character.js?v=6",
+      "@bb/fx": "./js/fx.js?v=6",
+      "@bb/rules": "./js/rules.js?v=6",
+      "@bb/audio": "./js/audio.js?v=6",
+      "@bb/main": "./js/main.js?v=6"
     }
   }
   </script>
@@ -50,7 +51,7 @@
       <p class="disclaimer">Только для взрослых 21+. Жёсткий тон, удары в пах, доминирование.
         Все персонажи вымышлены и совершеннолетние (21+).</p>
       <p class="controls-hint">WASD / стрелки — ходьба · мышь (зажать) — камера · E — подойти<br/>
-        Бой: J / 1 — ап-кик · K / 2 — колено · Esc — отступить</p>
+        Бой: J / 1 — ап-кик · K / 2 — колено · Esc — отступить · M — звук</p>
     </div>
   </section>
 
@@ -95,6 +96,17 @@
   <div id="popups"></div>
   <div id="flash"></div>
   <div id="vignette"></div>
+  <div id="snd" class="snd" aria-label="Звук">
+    <input id="snd-vol" type="range" min="0" max="100" step="1" value="80" aria-label="Громкость" />
+    <button type="button" id="snd-btn" class="snd-btn" title="Звук (M)">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M3 9.5v5h4l5 4.5V5L7 9.5H3z" fill="currentColor"/>
+        <g class="snd-on" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></g>
+        <g class="snd-off" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M16 9.5l5 5M21 9.5l-5 5"/></g>
+      </svg>
+      <span class="snd-key">M</span>
+    </button>
+  </div>
   <div id="fps" class="hidden"></div>
   <div id="err" class="hidden"></div>
 

@@ -496,8 +496,11 @@ export function buildGym(scene, tex, renderer) {
   // world bounds collider (inner walls)
   const bounds = { x0: -HX + 0.35, x1: HX - 0.35, z0: -HZ + 0.35, z1: HZ - 0.35 };
 
+  // puzzle-mat zone (training area) → footstep surface
+  const matZone = { x0: -1.2 - 4.65, x1: -1.2 + 4.65, z0: -1.4 - 3.65, z1: -1.4 + 3.65 };
+  const surfaceAt = (x, z) => (x > matZone.x0 && x < matZone.x1 && z > matZone.z0 && z < matZone.z1 ? 'mat' : 'floor');
   return {
-    root, colliders, bounds, bags, lamps, sunDir, M,
+    root, colliders, bounds, bags, lamps, sunDir, M, surfaceAt,
     update(t, dt) { for (const u of updaters) u(t, dt); },
   };
 }

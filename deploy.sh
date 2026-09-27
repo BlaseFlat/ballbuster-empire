@@ -9,7 +9,7 @@ MSG="${1:-Update 3D game}"
 cd "$REPO" && git pull -q --rebase origin main || true
 find "$REPO" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 cp -a "$HERE/." "$REPO/"
-rm -rf "$REPO/tools" "$REPO/node_modules"
+rm -rf "$REPO/node_modules" "$REPO/tools/node_modules"; [ -d "$REPO/tools" ] && find "$REPO/tools" -mindepth 1 -maxdepth 1 ! -name audio -exec rm -rf {} + || true
 cd "$REPO"
 git add -A
 if git diff --cached --quiet; then echo "nothing to commit"; else git commit -q -m "$MSG" && git push -q origin main; fi
