@@ -4,6 +4,7 @@ from poses import Pose, solve
 from rig import Rig
 
 GUY_M = -0.74        # guy origin Y in Rusana space (guy rotated 180°)
+EXTRA_META = {}      # clip name -> extra anim_meta fields (filled by actions.py: speed, root_end, travel)
 def g2w(p): return np.array([-p[0], GUY_M - p[1], p[2]])
 def w2g(p): return np.array([-p[0], GUY_M - p[1], p[2]])
 
@@ -170,6 +171,8 @@ def build_rusana(rigpath):
     c.key(70, stand((12,0,3)).copy(guy="tap"))
     c.key(84, stand((12,0,3)).copy(guy="tap"))
     C.append(c)
+    import actions as _AC           # v3 action clips (run, dash, caught, stagger) — appended, existing clips untouched
+    C += _AC.rus_actions(R)
     return R, C
 
 # ================= GUY (guy-local space; faces -Y) =================
@@ -316,4 +319,6 @@ def build_guy(rigpath):
     c = Clip("guy_tap")
     c.key(0, fetal(0)); c.key(6, fetal(2, tap=1.0)); c.key(11, fetal(2, tap=0.0)); c.key(17, fetal(2, tap=1.0)); c.key(22, fetal(2, tap=0.0)); c.key(28, fetal(2, tap=1.0)); c.key(34, fetal(0, tap=0.0))
     C.append(c)
+    import actions as _AC           # v3 AI action clips (guard, hip turn, step back, run, winded, catch, shove, taunt, feint)
+    C += _AC.guy_actions(R, rigpath)
     return R, C

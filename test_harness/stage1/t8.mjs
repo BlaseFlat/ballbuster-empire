@@ -1,0 +1,25 @@
+import { setup, run, until, ev, log } from './lib.mjs';
+const side = (page, i, d = 2.4) => ev(page, ([i, d]) => { const g = __bb.guys[i].group.position, r = __bb.rus.group.position;
+  const mx = (g.x + r.x) / 2, mz = (g.z + r.z) / 2, dx = g.x - r.x, dz = g.z - r.z, l = Math.hypot(dx, dz) || 1;
+  __bb.cam.pos.set(mx - dz / l * d, 1.3, mz + dx / l * d); }, [i, d]);
+export default async (page, shot) => {
+  await setup(page);
+  await ev(page, () => { __bb.startGame(); __bb.aiOff = true; });
+  await ev(page, () => { __bb.goTo(0, 1.1); __bb.guyDo(0, 'guard'); }); await run(page, 0.8); await side(page, 0); await shot('t8_guard');
+  log('g0', await ev(page, () => __bb.info().guys[0].clip));
+  await ev(page, () => { __bb.guyDo(0, 'taunt'); }); await run(page, 0.5); await side(page, 0); await shot('t8_taunt');
+  log('g0', await ev(page, () => __bb.info().guys[0].clip));
+  await run(page, 2);
+  await ev(page, () => { __bb.goTo(2); __bb.guyDo(2, 'catch'); }); await run(page, 0.3);
+  await ev(page, () => __bb.strike('kick')); await until(page, 'G.info().lastGrade && G.info().lastGrade.grade==="caught"', 3);
+  await run(page, 0.3); await side(page, 2, 2.2); await shot('t8_caught');
+  log('rus', await ev(page, () => __bb.info().act));
+  await run(page, 0.55); await side(page, 2, 2.6); await shot('t8_stagger');
+  log('rus', await ev(page, () => __bb.info().act));
+  await run(page, 2);
+  await ev(page, () => { __bb.goTo(1, 1.2); __bb.aiOff = false; __bb.guyDo(1, 'flee'); }); await run(page, 0.6);
+  await side(page, 1, 3.5); await shot('t8_run');
+  log('g1', await ev(page, () => __bb.info().guys[1]));
+  await run(page, 3.5); await side(page, 1, 3); await shot('t8_winded');
+  log('g1', await ev(page, () => __bb.info().guys[1]));
+};

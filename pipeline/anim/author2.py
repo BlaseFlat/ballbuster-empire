@@ -48,6 +48,7 @@ def run(R, clip):
         E = {b: qnorm(hermite(qs[b], ts, f, clip.loop)) for b in R.names}
         root = hermite([r for _,r,_ in solved], ts, f, clip.loop)
         sh = {s: float(np.clip(hermite([np.array(P.shape.get(s,0.0)) for _,_,P in solved], ts, f, clip.loop),0,1)) for s in snames}
+        if getattr(clip, "post", None) is not None: E = clip.post(f, E, root)   # per-frame overrides (e.g. ponytail secondary motion, actions.py)
         frames.append((E, root, sh))
     return frames, [(f, P.guy) for f,P in keys]
 
@@ -76,5 +77,6 @@ if __name__ == "__main__":
     for o in (o1, o2):
         for k, v in o.items():
             meta["clips"][k] = {"n": v["n"], "loop": v["loop"], "expr": v["expr"], "keys": v["keys"]}
+            meta["clips"][k].update(CL.EXTRA_META.get(k, {}))   # new action clips: speed / root_end / travel (actions.py)
     json.dump(meta, open('/workspace/bb3d/out/anim_meta.json', 'w'))
     print("OK")

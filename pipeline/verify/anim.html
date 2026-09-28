@@ -1,0 +1,44 @@
+<!doctype html><html><body style="margin:0;background:#333">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// v3 action-clip viewer: window.show({r:[clip,t]|null, g:[clip,t]|null, gz, gx, gyaw, cam:[az,el,dist,tx,ty,tz], grid})
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+const W = +(new URLSearchParams(location.search).get('w') || 480), H = +(new URLSearchParams(location.search).get('h') || 560);
+const r = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true}); r.setSize(W,H);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x3a3a40);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.3));
+const dl = new THREE.DirectionalLight(0xffffff, 2.3); dl.position.set(2,4,3); dl.castShadow = true; dl.shadow.mapSize.set(1024,1024);
+Object.assign(dl.shadow.camera, {left:-3,right:3,top:3,bottom:-3}); sc.add(dl);
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(12,12), new THREE.MeshStandardMaterial({color:0x2a2a2e})); fl.rotation.x=-Math.PI/2; fl.receiveShadow=true; sc.add(fl);
+const grid = new THREE.GridHelper(12, 48, 0x666666, 0x444444); grid.position.y = 0.002; sc.add(grid);
+const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const [R, G] = await Promise.all([L.loadAsync('/opt/rusana.glb'), L.loadAsync('/opt/guy.glb')]);
+const rus = R.scene, guy = G.scene; sc.add(rus, guy);
+[rus,guy].forEach(s=>s.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}}));
+const mr = new THREE.AnimationMixer(rus), mg = new THREE.AnimationMixer(guy);
+const cam = new THREE.PerspectiveCamera(32,W/H,0.05,50);
+window.info = {rus: R.animations.map(a=>[a.name,+a.duration.toFixed(3)]), guy: G.animations.map(a=>[a.name,+a.duration.toFixed(3)])};
+const bw = (s, n) => { let b; s.traverse(o => { if (o.isBone && o.name === n) b = o; }); return b; };
+window.show = (o) => {
+  mr.stopAllAction(); mg.stopAllAction();
+  rus.visible = !!o.r; guy.visible = !!o.g;
+  if (o.r) { const a = mr.clipAction(THREE.AnimationClip.findByName(R.animations, o.r[0])); a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; a.play(); mr.setTime(o.r[1]); }
+  if (o.g) { const a = mg.clipAction((THREE.AnimationClip.findByName(G.animations, o.g[0]) || THREE.AnimationClip.findByName(G.animations, o.g[0].replace(/^guy_/, '')))); a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; a.play(); mg.setTime(o.g[1]); }
+  rus.position.set(o.rx || 0, 0, o.rz || 0); rus.rotation.y = o.ryaw || 0;
+  guy.position.set(o.gx || 0, 0, o.gz ?? 0.667); guy.rotation.y = o.gyaw ?? Math.PI;
+  const [az, el, dist, tx, ty, tz] = o.cam || [-70, 10, 3.2, 0, 0.85, 0.33];
+  const a = az * Math.PI / 180, e = el * Math.PI / 180;
+  cam.position.set(tx + Math.sin(a) * Math.cos(e) * dist, ty + Math.sin(e) * dist, tz + Math.cos(a) * Math.cos(e) * dist); cam.lookAt(tx, ty, tz);
+  grid.visible = o.grid !== false;
+  r.render(sc, cam);
+  rus.updateMatrixWorld(true); guy.updateMatrixWorld(true);
+  const p = (s, n) => { const b = bw(s, n); if (!b) return null; const v = new THREE.Vector3(); b.getWorldPosition(v); return v.toArray().map(x => +x.toFixed(3)); };
+  return { r: o.r ? { foot_l: p(rus, 'foot_l'), foot_r: p(rus, 'foot_r'), ball_l: p(rus,'ball_l'), ball_r: p(rus,'ball_r'), pelvis: p(rus, 'pelvis') } : null,
+           g: o.g ? { hand_l: p(guy, 'hand_l'), hand_r: p(guy, 'hand_r'), pelvis: p(guy, 'pelvis'), ball_l: p(guy,'ball_l'), ball_r: p(guy,'ball_r') } : null };
+};
+window.ready = true;
+</script></body></html>

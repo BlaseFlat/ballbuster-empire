@@ -11,7 +11,7 @@ page.on('pageerror', (e) => { console.log('[pageerror]', e.message); errs.push(e
 await page.goto(url, { waitUntil: 'load' });
 await page.waitForFunction(() => window.__bb && window.__bb.mode === 'menu', { timeout: 120000 });
 const shot = async (name) => { await page.evaluate(() => { if (__bb.manual) { __bb.noRender = false; __bb.step(1e-4); __bb.noRender = true; } }); await page.evaluate(() => { for (const a of document.getAnimations()) { const t = a.effect && a.effect.target; if (t && t.classList && t.classList.contains('popup')) { a.pause(); a.currentTime = 230; } } });
-  await page.screenshot({ path: `/workspace/bb_shots/${name}.png` });
+  await page.screenshot({ path: `${process.env.SHOTS || '/workspace/bb_shots'}/${name}.png` });
   await page.evaluate(() => { for (const a of document.getAnimations()) { const t = a.effect && a.effect.target; if (t && t.classList && t.classList.contains('popup')) a.play(); } }); console.log('shot', name); };
 const mod = await import('./' + scen + '?t=' + Date.now());
 try { await mod.default(page, shot); } catch (e) { console.log('SCENARIO ERROR', e); errs.push(String(e)); }
