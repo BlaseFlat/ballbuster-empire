@@ -4,12 +4,14 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { CFG, GUYS, STATE_RU, DEBUG, V } from '@bb/config';
+import { CFG, GUYS, STATE_RU, DEBUG, V, COMBAT, TRAITS } from '@bb/config';
 import { Progress, loadGLB, loadTex, loadHDR, loadJSON } from '@bb/loader';
 import { buildGym, collide } from '@bb/gym';
 import { Character } from '@bb/character';
 import { FX } from '@bb/fx';
 import { Bout, GUY_STATES } from '@bb/rules';
+import { gradeStrike, Pain, GRADE_RU } from '@bb/combat';
+import { Brain } from '@bb/ai';
 import { GameAudio } from '@bb/audio';
 
 const $ = (s) => document.querySelector(s);
@@ -102,8 +104,13 @@ function placeholderGLTF(color, h) {
 // ---------------------------------------------------------------- game state
 const G = {
   mode: 'loading', rep: 0, time: 0, timeScale: 1, hitStopUntil: 0, slowUntil: 0, slowScale: 1,
-  keys: {}, rus: null, guys: [], gym: null, fx: null, near: null, fight: null, contact: null,
-  cam: { yaw: 0, pitch: 0.28, dist: 3.4, side: 1, pos: new THREE.Vector3(), look: new THREE.Vector3() },
+  keys: {}, rus: null, guys: [], gym: null, fx: null, near: null, contact: null,
+  gt: 0,            // game clock (scaled by hit-stop / slow-mo) for AI, pain and combat timing
+  act: null,        // Rusana's current action: dash / strike / stagger (null = free to walk)
+  buffer: null,     // buffered strike press {move, until}
+  presses: [],      // recent strike presses (spam detection)
+  engaged: null, engagedUntil: 0, duel: null, lastContact: null,
+  cam: { yaw: 0, pitch: 0.28, dist: 3.4, side: 1, eng: 0, engGuy: null, lastDrag: -99, pos: new THREE.Vector3(), look: new THREE.Vector3() },
   vel: new THREE.Vector3(), assetsInfo: {},
 };
 window.__bb = G;
@@ -224,6 +231,7 @@ async function init() {
   const bb = new THREE.Box3().setFromObject(rus.group); log('Rusana bbox', bb.min.toArray().map((v) => v.toFixed(2)), bb.max.toArray().map((v) => v.toFixed(2)));
 
   const guyG = A.guy || placeholderGLTF(0x445566, 1.8);
+  const guardWeights = (n) => /^(clavicle|upperarm|lowerarm|hand|thumb|index|middle|ring|pinky)/.test(n) ? 1 : /^spine/.test(n) ? 0.45 : /^(neck|head)/.test(n) ? 0.3 : 0;
   for (const def of GUYS) {
     const c = new Character(guyG, { name: def.name, clone: true, meta: A.meta, prefix: 'guy_', idle: 'guy_idle' });
     c.tint('M_shirt', def.shirt);
@@ -232,10 +240,19 @@ async function init() {
     const a = c.play('guy_idle', { fade: 0 });
     if (a) a.time = Math.random() * a.getClip().duration;
     c.setExpr({ smug: 0.6 });
-    c.def = def; c.state = 'idle'; c.beaten = false; c.queue = [];
+    c.def = def; c.state = 'idle'; c.beaten = false; c.queue = []; c.timeline = [];
+    c.trait = TRAITS[def.trait] || TRAITS.cocky;
     c.home = new THREE.Vector3(...def.pos);
-    const lab = document.createElement('div'); lab.className = 'npc-label'; lab.textContent = `${def.name}, ${def.age}`;
+    // guard = hands over the groin, sampled from the 'stun' clip and layered over idle / hurt
+    c.defineLayer('guard', c.samplePose(c.has('stun') ? 'stun' : 'guy_hurt', 0.2, guardWeights), 7);
+    c.pain = new Pain(c.trait.tough);
+    c.bout = null;
+    c.brain = new Brain(c, world);
+    const lab = document.createElement('div'); lab.className = 'npc-label';
+    lab.innerHTML = '<div class="nl-say"></div><div class="nl-name"></div><div class="nl-status"></div><div class="nl-pain"><i></i></div>';
+    lab.querySelector('.nl-name').innerHTML = `${def.name}, ${def.age} <span class="nl-trait">· ${c.trait.ru}</span>`;
     $('#labels').appendChild(lab); c.label = lab;
+    c.labelEls = { say: lab.querySelector('.nl-say'), status: lab.querySelector('.nl-status'), pain: lab.querySelector('.nl-pain i'), painBox: lab.querySelector('.nl-pain') };
     c.onPlay = (clip) => guyVoice(c, clip);
     G.guys.push(c);
   }
@@ -277,19 +294,18 @@ $('#snd').addEventListener('pointerdown', (e) => e.stopPropagation());
 syncSoundUI();
 
 // ---------------------------------------------------------------- input
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !e.repeat) { G.audio.toggleMute(); G.fx && G.fx.popup && G.fx.popup(G.audio.muted ? 'Звук выкл.' : 'Звук вкл.', { x: innerWidth - 90, y: innerHeight - 90 }, 'small'); }
-  if (e.repeat && !['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) return;
+  if (e.repeat && !MOVE_KEYS.includes(e.code)) return;
   G.keys[e.code] = true;
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   if (e.code === 'Backquote' || e.code === 'F2') $('#fps').classList.toggle('hidden');
   if (G.mode === 'menu' && e.code === 'Enter') startGame();
-  else if (G.mode === 'explore' && (e.code === 'KeyE' || e.code === 'Enter')) tryInteract();
-  else if (G.mode === 'fight') {
-    if (e.code === 'KeyJ' || e.code === 'Digit1' || e.code === 'Numpad1') attack('kick');
-    else if (e.code === 'KeyK' || e.code === 'Digit2' || e.code === 'Numpad2') attack('knee');
-    else if (e.code === 'Escape') leaveFight();
-    else if (e.code === 'KeyC') G.cam.side *= -1;
+  else if (G.mode === 'explore') {
+    if (e.code === 'KeyJ' || e.code === 'Digit1' || e.code === 'Numpad1') pressStrike('kick');
+    else if (e.code === 'KeyK' || e.code === 'Digit2' || e.code === 'Numpad2') pressStrike('knee');
+    else if (e.code === 'KeyC') { G.cam.side *= -1; G.cam.sideLocked = true; }
   } else if (G.mode === 'victory' && (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space')) continueAfterVictory();
 });
 addEventListener('keyup', (e) => { G.keys[e.code] = false; });
@@ -300,7 +316,7 @@ canvas.addEventListener('pointerup', (e) => { drag = null; try { canvas.releaseP
 canvas.addEventListener('pointermove', (e) => {
   if (!drag || G.mode !== 'explore') return;
   G.cam.yaw -= (e.clientX - drag.x) * 0.006; G.cam.pitch = THREE.MathUtils.clamp(G.cam.pitch + (e.clientY - drag.y) * 0.004, 0.05, 1.0);
-  drag.x = e.clientX; drag.y = e.clientY;
+  drag.x = e.clientX; drag.y = e.clientY; G.cam.lastDrag = G.realTime;
 });
 canvas.addEventListener('wheel', (e) => { if (G.mode === 'explore') G.cam.dist = THREE.MathUtils.clamp(G.cam.dist + Math.sign(e.deltaY) * 0.3, 2.0, 6.5); }, { passive: true });
 $('#btn-start').addEventListener('click', () => startGame());
@@ -314,10 +330,66 @@ function startGame() {
   canvas.focus();
 }
 
-// ---------------------------------------------------------------- exploration
-const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
+// ---------------------------------------------------------------- helpers
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
+const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const wrapA = (a) => ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+const STANDING_CLIPS = new Set(['idle', 'hurt', 'stun']);
+const clipBase = (ch) => String(ch.currentName).replace(/^guy_/, '');
 
-function updateExplore(dt) {
+// guy is standing on his own (AI may act)
+function guyFree(g) {
+  return G.mode === 'explore' && !g.beaten && !g.timeline.length && !g.queue.length && STANDING_CLIPS.has(clipBase(g)) && !g.caughtLeg;
+}
+// bent over and holding (double_over finished, waiting in his recovery queue): knee-able
+function guyBent(g) {
+  return !g.beaten && !g.timeline.length && clipBase(g) === 'double_over' && g.finished && !g.queue.some((q) => /knees|floor|tap/.test(q.name || ''));
+}
+// can a strike be started on him right now? → 'stand' | 'bent' | null
+function strikeable(g) {
+  if (!g || g.beaten || g.state === 'tap') return null;
+  if (!g.timeline.length && STANDING_CLIPS.has(clipBase(g)) && !(g.queue.length && g.queue.some((q) => /knees|floor|tap/.test(q.name || '')))) return 'stand';
+  if (guyBent(g)) return 'bent';
+  return null;
+}
+// root-equivalent distance Rusana→guy measured at his pelvis (handles hips-back poses: bent over, stagger offset)
+function effDist(g) {
+  const pv = g.boneWorld('pelvis', _v4);
+  return flatDist(G.rus.group.position, pv) + pelvisOffsets.guy;
+}
+// angle (deg) between his facing and the direction to Rusana (0 = she is in front of him)
+function facingAngle(g) {
+  const p = g.group.position, r = G.rus.group.position;
+  return Math.abs(THREE.MathUtils.radToDeg(wrapA(Math.atan2(r.x - p.x, r.z - p.z) - g.yaw)));
+}
+function guyCircles(except) {
+  return G.guys.filter((g) => g !== except).map((g) => ({ x: g.group.position.x, z: g.group.position.z, r: g.beaten ? 0.55 : 0.32 }));
+}
+
+// world interface for the guy AI
+const world = {
+  now: () => G.gt,
+  rusPos: () => G.rus.group.position,
+  dist: (g) => flatDist(g.group.position, G.rus.group.position),
+  free: (g) => guyFree(g),
+  rusStriking: (g) => !!(G.act && G.act.target === g),
+  painFrac: (g) => g.pain.frac,
+  say: (g, text) => speech(g, text),
+  shoveRus: (g) => shoveRus(g),
+  collideGuy(g) {
+    const c = guyCircles(g); if (G.rus) c.push({ x: G.rus.group.position.x, z: G.rus.group.position.z, r: 0.28 });
+    collide(g.group.position, 0.3, G.gym, c);
+  },
+  clampPoint: (p) => collide(p, 0.6, G.gym, []),
+};
+
+function speech(g, text) {
+  const el = g.labelEls.say; el.textContent = `«${text}»`; el.classList.add('on');
+  g.sayUntil = G.realTime + 1.9;
+}
+
+// ---------------------------------------------------------------- exploration (movement + open combat)
+function updateExplore(dt, realDt) {
   const k = G.keys, rus = G.rus;
   let ix = 0, iz = 0;
   if (k.KeyW || k.ArrowUp) iz += 1; if (k.KeyS || k.ArrowDown) iz -= 1;
@@ -325,141 +397,218 @@ function updateExplore(dt) {
   const yaw = G.cam.yaw;
   const fwd = _v1.set(-Math.sin(yaw), 0, -Math.cos(yaw)), right = _v2.set(Math.cos(yaw), 0, -Math.sin(yaw));
   const dir = _v3.set(0, 0, 0).addScaledVector(fwd, iz).addScaledVector(right, ix);
-  const moving = dir.lengthSq() > 0.01;
+  const moving = dir.lengthSq() > 0.01 && !G.act;
   if (moving) dir.normalize();
-  G.vel.x = damp(G.vel.x, moving ? dir.x * CFG.walkSpeed : 0, 10, dt);
-  G.vel.z = damp(G.vel.z, moving ? dir.z * CFG.walkSpeed : 0, 10, dt);
-  const speed = Math.hypot(G.vel.x, G.vel.z);
-  const p = rus.group.position;
-  p.x += G.vel.x * dt; p.z += G.vel.z * dt;
-  const circles = G.guys.map((g) => ({ x: g.group.position.x, z: g.group.position.z, r: g.beaten ? 0.55 : 0.32 }));
-  collide(p, 0.28, G.gym, circles);
-  if (moving) { rus.yaw = angDamp(rus.yaw, Math.atan2(dir.x, dir.z), CFG.turnSpeed, dt); rus.group.rotation.y = rus.yaw; }
-  if (speed > 0.25) {
-    const a = rus.play('rus_walk', { fade: 0.22, restart: false, loop: true });
-    if (a && rus.currentName && /walk/.test(rus.currentName)) a.timeScale = THREE.MathUtils.clamp(speed / CFG.walkClipSpeed, 0.6, 2.4);
-  } else rus.play('rus_idle', { fade: 0.3, restart: false, loop: true });
+  G.inputDir = moving ? Math.atan2(dir.x, dir.z) : null;
+  G.moving = moving;
+  if (!G.act) {
+    G.vel.x = damp(G.vel.x, moving ? dir.x * CFG.walkSpeed : 0, 10, dt);
+    G.vel.z = damp(G.vel.z, moving ? dir.z * CFG.walkSpeed : 0, 10, dt);
+    const speed = Math.hypot(G.vel.x, G.vel.z);
+    const p = rus.group.position;
+    p.x += G.vel.x * dt; p.z += G.vel.z * dt;
+    collide(p, 0.28, G.gym, guyCircles(null));
+    if (moving) { rus.yaw = angDamp(rus.yaw, Math.atan2(dir.x, dir.z), CFG.turnSpeed, dt); rus.group.rotation.y = rus.yaw; }
+    if (speed > 0.25) {
+      const a = rus.play('rus_walk', { fade: 0.22, restart: false, loop: true });
+      if (a && rus.currentName && /walk/.test(rus.currentName)) a.timeScale = THREE.MathUtils.clamp(speed / CFG.walkClipSpeed, 0.6, 2.4);
+    } else if (dt > 0) rus.play('rus_idle', { fade: 0.3, restart: false, loop: true });
+  } else G.vel.set(0, 0, 0);
 
-  // guys: idle, turn toward Rusana when close
-  let best = null, bestD = 1e9;
+  updateAct(dt);
+  // buffered strike (pressed while busy / while he was still reacting)
+  if (G.buffer) {
+    if (G.gt > G.buffer.until) G.buffer = null;
+    else if (canStartNewStrike()) { const b = G.buffer; G.buffer = null; tryStrike(b.move, true); }
+  }
+
+  // guys: AI, pain decay, bout reset
   for (const g of G.guys) {
-    const d = g.group.position.distanceTo(p);
-    if (!g.beaten && d < 4.5) { g.yaw = angDamp(g.yaw, Math.atan2(p.x - g.group.position.x, p.z - g.group.position.z), 2.5, dt); g.group.rotation.y = g.yaw; }
-    if (!g.beaten && d < CFG.interactDist && d < bestD) { best = g; bestD = d; }
+    if (g.beaten) continue;
+    // safety net: a clinch that was never resolved (strike cancelled) returns to standing
+    if (clipBase(g) === 'clinched' && g.finished && !g.timeline.length && !(G.act && G.act.target === g)) g.play('guy_idle', { fade: 0.3 });
+    if (!G.aiOff) g.brain.update(dt, G.gt);
+    else if (guyFree(g)) { g.brain.speed = 0; g.brain.applyPose(dt); }
+    const down = g.state === 'knees' || g.state === 'floor' || g.state === 'tap' || !guyFree(g);
+    g.pain.update(dt, G.gt, down);
+    if (g.afterHit && guyFree(g) && G.gt >= g.afterHit.at) { g.brain.afterHit(g.afterHit.grade, g.pain.frac); g.afterHit = null; }
+    if (g.bout && !g.bout.ended && g.pain.value <= 0 && G.gt - g.pain.lastHit > COMBAT.resetAfter && guyFree(g)) { g.bout = null; g.state = 'idle'; if (G.engaged === g) updateFightHud(); }
+    if (g.bout && (strikeable(g) || (G.act && G.act.target === g)) && g.bout.tick(dt) && G.engaged === g) updateFightHud();
   }
-  G.near = best;
+
+  // engagement (HUD + camera framing) and the strike prompt
+  const tgt = G.act && G.act.target ? G.act.target : pickTarget();
+  if (tgt) { G.engaged = tgt; G.engagedUntil = G.gt + 2.5; }
+  else if (G.engaged && (G.gt > G.engagedUntil || G.engaged.beaten || flatDist(G.engaged.group.position, rus.group.position) > 4)) G.engaged = null;
+  G.near = tgt;
   const pr = $('#prompt');
-  if (best) { pr.innerHTML = `E — подойти<small>${best.def.name}, ${best.def.age}</small>`; pr.classList.remove('hidden'); }
-  else pr.classList.add('hidden');
+  if (tgt && !G.act) {
+    const s = strikeable(tgt);
+    pr.innerHTML = s === 'bent' ? `K — колено по согнувшемуся<small>${tgt.def.name} · ${tgt.trait.ru}</small>` : s ? `J — ап-кик · K — колено<small>${tgt.def.name} · ${tgt.trait.ru}</small>` : `Ждём, пока встанет…<small>${tgt.def.name}</small>`;
+    pr.classList.remove('hidden');
+  } else pr.classList.add('hidden');
+  UI.show('#hud-fight', !!G.engaged);
+  if (G.engaged !== G.hudGuy) { G.hudGuy = G.engaged; updateFightHud(); }
+  if (G.engaged) updatePainHud();
 }
 
-function updateExploreCamera(dt) {
-  const c = G.cam, p = G.rus.group.position;
-  const target = _v1.set(p.x, 1.25, p.z);
-  const off = _v2.set(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch)).multiplyScalar(c.dist);
-  const want = _v3.copy(target).add(off);
-  const B = G.gym.bounds;
-  want.x = THREE.MathUtils.clamp(want.x, B.x0 - 0.1, B.x1 + 0.1); want.z = THREE.MathUtils.clamp(want.z, B.z0 - 0.1, B.z1 + 0.1); want.y = THREE.MathUtils.clamp(want.y, 0.4, 5.2);
-  c.pos.lerp(want, 1 - Math.exp(-8 * dt));
-  c.look.lerp(target, 1 - Math.exp(-10 * dt));
-}
-
-function tryInteract() { if (G.near) enterFight(G.near); }
-
-// ---------------------------------------------------------------- fight
-function fightFrame(f) {
-  // f.dir: unit vector Rusana → guy (xz). Positions: guy stays, Rusana placed at dist.
-  const gp = f.guy.group.position;
-  const right = new THREE.Vector3(f.dir.z, 0, -f.dir.x);
-  return { gp, right };
-}
-
-function enterFight(guy) {
-  const rus = G.rus;
-  const dir = new THREE.Vector3().subVectors(guy.group.position, rus.group.position).setY(0);
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
-  dir.normalize();
-  guy.timeline = guy.timeline || []; guy.queue = guy.queue || [];
-  const f = G.fight = {
-    guy, dir, bout: new Bout(guy.def), attack: null, queued: null, ended: false, snapDur: 0.2, stepping: false,
-    dist: G.contact.kick.dist, side: G.contact.kick.side || 0,
-    rusFrom: rus.group.position.clone(), snapT: 0, victoryAt: 0,
-  };
-  // guy faces Rusana; if there's no room behind Rusana, the axis stays as is (room is large)
-  guy.yaw = Math.atan2(-dir.x, -dir.z); guy.group.rotation.y = guy.yaw;
-  rus.yaw = Math.atan2(dir.x, dir.z); rus.group.rotation.y = rus.yaw;
-  rus.queue = [];
-  if (rus.has('rus_approach')) { rus.play('rus_approach', { fade: 0.15, loop: false }); rus.queue.push({ name: 'rus_idle', loop: true, fade: 0.2 }); }
-  else rus.play('rus_idle', { fade: 0.2 });
-  guy.queue = []; guy.timeline = []; guy.play('guy_idle', { fade: 0.2, restart: false });
-  G.mode = 'fight';
-  G.vel.set(0, 0, 0);
-  // choose camera side with more room
-  G.cam.side = pickCamSide(f);
-  UI.show('#hud-explore', false); UI.show('#hud-fight', true);
-  UI.text('#fight-name', `${guy.def.name}, ${guy.def.age}`);
-  UI.text('#f-log', guy.def.taunt);
-  updateFightHud();
-  if (talk(0.75)) { G.audio.rus('rus_start', { delay: 0.45 }); f.lastLine = G.realTime; }
-  log('fight start', guy.def.name);
-}
-
-function combatCamPose(f, side, out, look) {
-  const rp = G.rus.group.position, gp = f.guy.group.position;
-  const mid = _v1.copy(rp).add(gp).multiplyScalar(0.5);
-  const right = _v2.set(f.dir.z, 0, -f.dir.x).multiplyScalar(side);
-  const a = THREE.MathUtils.degToRad(20);
-  // side view rotated ~20° toward the guy's front: groin line + her strike leg read clearly, her face in 3/4 profile
-  const d = _v3.copy(right).multiplyScalar(Math.cos(a)).addScaledVector(f.dir, -Math.sin(a)).normalize();
-  out.copy(mid).addScaledVector(d, 3.35); out.y = 1.08;
-  look.copy(mid); look.y = 0.9;
-  return out;
-}
-
-function pickCamSide(f) {
-  const B = G.gym.bounds, o = new THREE.Vector3(), l = new THREE.Vector3();
-  let bestS = 1, bestScore = -1e9;
-  for (const s of [1, -1]) {
-    combatCamPose(f, s, o, l);
-    const m = Math.min(o.x - B.x0, B.x1 - o.x, o.z - B.z0, B.z1 - o.z);
-    let score = m;
-    for (const b of G.gym.colliders) if (o.x > b.x0 - 0.3 && o.x < b.x1 + 0.3 && o.z > b.z0 - 0.3 && o.z < b.z1 + 0.3) score -= 5;
-    if (score > bestScore) { bestScore = score; bestS = s; }
+// auto-target: nearest guy inside the cone in front of Rusana (or the input direction) within reach;
+// a guy right next to her counts from any side
+function pickTarget() {
+  const rus = G.rus, rp = rus.group.position;
+  const face = G.inputDir ?? rus.yaw;
+  let best = null, bestS = 1e9;
+  for (const g of G.guys) {
+    if (g.beaten) continue;
+    const d = flatDist(g.group.position, rp);
+    if (d > COMBAT.reach) continue;
+    const ang = Math.abs(THREE.MathUtils.radToDeg(wrapA(Math.atan2(g.group.position.x - rp.x, g.group.position.z - rp.z) - face)));
+    if (ang > COMBAT.cone && d > 1.0) continue;
+    const sc = d + ang / 60 - (g === G.engaged ? 0.35 : 0);
+    if (sc < bestS) { bestS = sc; best = g; }
   }
-  return bestS;
+  return best;
 }
 
-const STANDING_CLIPS = new Set(['idle', 'hurt', 'stun']);
-function guyReady(g) {
-  return !g.timeline.length && !g.queue.length && STANDING_CLIPS.has(String(g.currentName).replace(/^guy_/, ''));
+function canStartNewStrike() {
+  const a = G.act; if (!a) return true;
+  if (a.type === 'strike' && a.contactDone && G.rus.time >= a.ci.time + CFG.cancelAfterContact && !a.caught) return true;
+  return false;
 }
 
-function attack(move) {
-  const f = G.fight; if (!f || f.ended) return;
-  const rus = G.rus;
-  if (f.attack) {
-    const ci = f.attack.ci;
-    const canCancel = f.attack.contactDone && rus.time >= ci.time + CFG.cancelAfterContact;
-    if (!canCancel) { f.queued = move; return; }
-  }
-  // strikes are authored against a standing guy: wait until he has recovered (hurt / idle)
-  if (!guyReady(f.guy) || f.stepping) { f.queued = move; UI.text('#f-log', 'Ждёт, пока он выпрямится…'); return; }
+function pressStrike(move) {
+  G.presses.push(G.gt); G.presses = G.presses.filter((t) => G.gt - t < COMBAT.spamWindow);
+  G.lastPress = G.gt;
+  if (!canStartNewStrike()) { if (!G.act || G.act.type !== 'stagger') G.buffer = { move, until: G.gt + 0.45 }; return; }
+  tryStrike(move, false);
+}
+
+function tryStrike(move, fromBuffer) {
+  const target = pickTarget();
+  if (!target) { if (!fromBuffer) startStrike(move, null, {}); return; }       // strike into the air
+  const s = strikeable(target);
+  if (!s) { G.buffer = { move, until: G.gt + (fromBuffer ? 0.3 : 0.9) }; UI.text('#f-log', 'Ждём, пока он встанет…'); return; }
+  if (s === 'bent') move = 'knee';        // a doubled-over guy only takes the knee (adjusted contact)
   const ci = G.contact[move];
-  const clean = G.forceClean !== undefined ? G.forceClean : Math.random() < CFG.cleanChance[move];
-  const finishing = clean && f.bout.nextState === 'floor';   // floor → he taps out → victory
-  f.attack = { move, ci, clean, finishing, contactDone: false, t0: G.time };
-  if (finishing && talk(0.85)) { G.audio.rus('rus_fin'); f.lastLine = G.realTime; }
-  f.queued = null;
-  f.dist = ci.dist; f.side = ci.side || 0; f.snapT = 0; f.snapDur = 0.15; f.rusFrom = rus.group.position.clone();
+  const err = effDist(target) - ci.dist;
+  const spam = G.presses.length >= 3;
+  if (err > COMBAT.lungeMax) {
+    G.act = { type: 'dash', target, move, t: 0, from: G.rus.group.position.clone(), spam };
+    target.brain.onStrike(move, ci.time + (err - COMBAT.dashStop) / COMBAT.dashSpeed, { spam });
+    const w = G.rus.play('rus_walk', { fade: 0.1, loop: true }); if (w) w.timeScale = 2.5;
+    return;
+  }
+  startStrike(move, target, { spam, bent: s === 'bent' });
+}
+
+function updateAct(dt) {
+  const a = G.act, rus = G.rus; if (!a) return;
+  a.t += dt;
+  if (a.type === 'dash') {
+    const g = a.target;
+    if (!strikeable(g) && !guyBent(g)) { G.act = null; return; }
+    const gp = g.group.position, rp = rus.group.position;
+    const dx = gp.x - rp.x, dz = gp.z - rp.z, d = Math.hypot(dx, dz) || 1;
+    const want = Math.atan2(dx, dz);
+    rus.yaw = angDamp(rus.yaw, want, 18, dt); rus.group.rotation.y = rus.yaw;
+    const left = effDist(g) - G.contact[a.move].dist - COMBAT.dashStop;
+    if (left <= 0 || a.t > 0.8) {
+      const s = strikeable(g);
+      if (!s) { G.act = null; return; }
+      startStrike(s === 'bent' ? 'knee' : a.move, g, { spam: a.spam, dashLen: flatDist(a.from, rp), bent: s === 'bent' });
+      return;
+    }
+    const step = Math.min(left, COMBAT.dashSpeed * dt);
+    rp.x += dx / d * step; rp.z += dz / d * step;
+    collide(rp, 0.28, G.gym, guyCircles(g));
+    return;
+  }
+  if (a.type === 'strike') {
+    const t = rus.time;
+    const e = Math.min(1, a.t / a.lungeT), ease = 1 - Math.pow(1 - e, 3);
+    rus.group.position.copy(a.from).addScaledVector(a.dir, a.lunge * ease);
+    collide(rus.group.position, 0.28, G.gym, []);
+    if (a.target) { rus.yaw = angDamp(rus.yaw, a.yaw, 25, dt); rus.group.rotation.y = rus.yaw; }
+    if (a.finishing && !a.slow && t >= a.ci.time - 0.28) { a.slow = true; G.slowUntil = G.realTime + 1.0; G.slowScale = 0.3; }
+    if (!a.contactDone && t >= a.ci.time) onContact(a);
+    if (a.caught) {
+      a.caughtT += dt;
+      if (a.caughtT > 0.55) { const g = a.target; g.caughtLeg = false; g.setLayer('guard', 0, 5); rus.current && (rus.current.timeScale = 1); startStagger(g, 0.55, 'Поймал ногу — толкнул!'); }
+      return;
+    }
+    if (rus.finished) { G.act = null; rus.play('rus_idle', { fade: 0.3 }); }
+    return;
+  }
+  if (a.type === 'stagger') {
+    const k = Math.min(1, a.t / 0.38), ease = 1 - Math.pow(1 - k, 2);
+    rus.group.position.copy(a.from).addScaledVector(a.vec, ease);
+    collide(rus.group.position, 0.28, G.gym, guyCircles(null));
+    const env = Math.sin(Math.min(1, a.t / a.dur) * Math.PI);
+    rus.addRot('spine_01', _X, -0.32 * env); rus.addRot('spine_03', _X, -0.12 * env);
+    if (a.t >= a.dur) { G.act = null; }
+  }
+}
+const _X = new THREE.Vector3(1, 0, 0);
+
+function startStrike(move, target, { spam = false, dashLen = 0, bent = false } = {}) {
+  const rus = G.rus, ci = G.contact[move];
+  const a = G.act = { type: 'strike', move, ci, target, t: 0, contactDone: false, from: rus.group.position.clone(), dir: new THREE.Vector3(), lunge: 0, lungeT: move === 'knee' ? 0.3 : 0.2, yaw: rus.yaw, spam, dashLen, bent, pressT: G.lastPress ?? G.gt };
+  if (target) {
+    const gp = target.group.position;
+    a.dir.set(gp.x - a.from.x, 0, gp.z - a.from.z); if (a.dir.lengthSq() < 1e-6) a.dir.set(Math.sin(rus.yaw), 0, Math.cos(rus.yaw)); a.dir.normalize();
+    a.yaw = Math.atan2(a.dir.x, a.dir.z);
+    const err = effDist(target) - ci.dist;
+    a.lunge = THREE.MathUtils.clamp(err * COMBAT.magnet, -0.3, COMBAT.lungeMax);
+    a.open = target.brain.isOpen(G.gt) || (bent ? 'bent' : '');
+    if (!bent) target.brain.onStrike(move, ci.time, { spam, clinch: move === 'knee' });
+    // finisher prediction → slow-mo + her line
+    const pred = predictPain(target, move, Math.abs(err - a.lunge), a);
+    a.finishing = pred >= COMBAT.pain.floor && (!target.bout || target.bout.guyState !== 'floor');
+    if (a.finishing && talk(0.85)) { G.audio.rus('rus_fin'); G.lastLine = G.realTime; }
+    // guy sync: contact was fit against 'idle' (kick) / 'clinched' started together with rus_knee (knee)
+    if (move === 'knee' && !bent && target.has('clinched') && strikeable(target) === 'stand') {
+      target.queue = []; target.play('clinched', { fade: 0.1, loop: false });
+    }
+    if (!target.bout && !target.greeted) { target.greeted = true; if (!a.finishing && talk(0.75)) { G.audio.rus('rus_start'); G.lastLine = G.realTime; } }
+    G.engaged = target; G.engagedUntil = G.gt + 3;
+  }
   rus.queue = [];
   rus.play(ci.clip, { fade: ci.fadeIn ?? 0.1, loop: false });
-  // guy sync: contact was fit against 'idle' (kick) / 'clinched' started together with rus_knee (knee)
-  const g = f.guy; g.queue = []; g.timeline = [];
-  const pre = (ci.pre || []).find((x) => !/idle/.test(x.name) && g.has(x.name));
-  if (pre) g.play(pre.name, { fade: 0.1, loop: false });
-  else if (move === 'knee' && g.has('clinched')) g.play('clinched', { fade: 0.1, loop: false });
-  else g.play('guy_idle', { fade: 0.12 });
-  UI.text('#f-log', move === 'kick' ? 'Ап-кик снизу…' : 'Клинч — колено…');
+  UI.text('#f-log', move === 'kick' ? 'Ап-кик снизу…' : bent ? 'Колено по согнувшемуся…' : 'Клинч — колено…');
+}
+
+function predictPain(g, move, residual, a) {
+  const res = gradeStrike({ move, distErr: residual, angleDeg: facingAngle(g), timing: timingFor(g, a), defense: {} });
+  const P = new Pain(g.trait.tough); P.value = g.pain.value; P.lastHit = g.pain.lastHit; P.chain = g.pain.chain;
+  P.hit(res.grade, move, G.gt + (a.ci.time || 0));
+  return P.value;
+}
+function timingFor(g, a) {
+  const lc = G.lastContact;
+  return {
+    open: !!a.open,
+    rhythm: !!(lc && lc.target === g && (lc.grade === 'clean' || lc.grade === 'perfect') && a.pressT - lc.t >= 0.2 && a.pressT - lc.t <= 0.9),
+    dash: a.dashLen > 0.5,
+  };
+}
+
+function startStagger(by, dist, text) {
+  const rus = G.rus, rp = rus.group.position, gp = by.group.position;
+  const v = new THREE.Vector3(rp.x - gp.x, 0, rp.z - gp.z); if (v.lengthSq() < 1e-6) v.set(-Math.sin(rus.yaw), 0, -Math.cos(rus.yaw)); v.normalize().multiplyScalar(dist);
+  G.act = { type: 'stagger', t: 0, dur: 0.75, from: rp.clone(), vec: v };
+  rus.play('rus_idle', { fade: 0.18 });
+  G.buffer = null;
+  const scr = toScreen(_v1.set(rp.x, 1.5, rp.z));
+  G.fx.popup(text, { x: scr.x, y: scr.y - 20 }, 'block');
+  G.fx.smallHit(_v1.set(rp.x, 1.1, rp.z));
+  G.audio.impact('thigh');
+  UI.text('#f-log', text);
+}
+
+function shoveRus(g) {
+  const a = G.act;
+  if (a && (a.type === 'stagger' || (a.type === 'strike' && a.contactDone && a.target === g))) return;
+  startStagger(g, 0.7, `${g.def.name} толкнул!`);
 }
 
 function guyClip(state) {
@@ -468,71 +617,75 @@ function guyClip(state) {
 
 // Reaction after contact. Timeline times are seconds after contact in *real* time (hit-stop included):
 //   0–0.06 freeze both · flinch / flinch_knee · double_over at clip time 0.40 (+hit-stop).
-// Then a finish-driven queue: double_over staggers him 0.30 m back → baked into his root (no pop),
-// knees / getup / floor / tap are authored in place from that spot, and he always recovers to a
-// standing 'hurt' loop before the next strike so it lines up. Floor = fight over (he taps out).
-function guyReact(guy, prev, next, clean, move, ci) {
+// Then a finish-driven queue: double_over staggers him 0.30 m back → baked into his root (no pop, clamped
+// against walls), knees / getup / floor / tap are authored in place from that spot. Recovery is short: he
+// holds the bent-over pose ~0.7 s (knee-able!), getup plays 1.35× faster. Floor = he taps out → victory.
+function guyReact(guy, prev, next, clean, move, ci, { bent = false, hs: hsOverride } = {}) {
   guy.queue = []; guy.timeline = []; guy.tl = 0;
-  const hs = clean ? (ci.hitStop ?? CFG.hitStop) : 0;
-  const flinch = move === 'knee' && guy.has('flinch_knee') ? 'flinch_knee' : 'guy_flinch';
+  const hs = clean ? (hsOverride ?? ci.hitStop ?? CFG.hitStop) : 0;
+  const flinch = (move === 'knee' || bent) && guy.has('flinch_knee') ? 'flinch_knee' : 'guy_flinch';
+  const f0 = bent ? 0.14 : 0.05;
   const at = (t, name, loop = false, fade = 0.05) => guy.timeline.push({ at: t + hs, name, loop, fade });
   const q = (o) => guy.queue.push(o);
   const standClip = guy.has('guy_hurt') ? 'guy_hurt' : 'guy_idle';
   let stateAt = 0.4;
   if (ci.seq) { const d = ci.seq.find((x) => /double_over/.test(x.name)); if (d) stateAt = d.at; }
   if (!clean) {
-    at(0, flinch, false, 0.05);
+    at(0, flinch, false, f0);
     at(Math.min(stateAt, 0.4), prev === 'idle' ? 'guy_idle' : standClip, true, 0.25);
     return;
   }
-  at(0, flinch, false, 0.04);
+  at(0, flinch, false, bent ? 0.14 : 0.04);
   if (next === 'flinch') {
     at(stateAt, standClip, true, 0.2);
   } else {
     at(stateAt, 'guy_double_over', false, 0.05);     // flinch last frame == double_over f0
     q({ bake: true });
     if (next === 'double_over') {
-      q({ name: standClip, loop: true, fade: 0.35, hold: 0.3 });
+      q({ name: standClip, loop: true, fade: 0.4, hold: 0.7 });
     } else if (next === 'knees') {
       q({ name: 'guy_knees', loop: false, fade: 0.1 });
-      q({ name: 'guy_getup', loop: false, fade: 0.15, hold: 0.45 });
+      q({ name: 'guy_getup', loop: false, fade: 0.15, hold: 0.3, ts: 1.35 });
       q({ name: standClip, loop: true, fade: 0.25 });
     } else if (next === 'floor' || next === 'tap') {
       q({ name: 'guy_knees', loop: false, fade: 0.1 });
       q({ name: 'guy_floor', loop: true, fade: 0.25, hold: 0.15 });
-      q({ name: 'guy_tap', loop: false, fade: 0.2, hold: 0.7, onStart: () => tapOut() });
+      q({ name: 'guy_tap', loop: false, fade: 0.2, hold: 0.7, onStart: () => tapOut(guy) });
       q({ name: 'guy_floor', loop: true, fade: 0.3 });
     }
   }
   guy.state = next;
 }
 
-// root-motion bake for double_over: move the object back along HIS facing and compensate the model
-// offset by the double_over action weight, so the pose never pops while it crossfades out.
+// root-motion bake for double_over: move the object back along HIS facing (clamped against walls / props)
+// and compensate the model offset by the double_over action weight, so the pose never pops while it
+// crossfades out. If a wall stops him, he slides the remaining bit smoothly during the crossfade.
 function bakeStagger(ch) {
   const a = ch.current; if (!a || !/double_over/.test(ch.currentName)) return;
   const d = CFG.staggerBack ?? 0.3;
-  ch.group.position.x -= Math.sin(ch.yaw) * d; ch.group.position.z -= Math.cos(ch.yaw) * d;
-  ch.stagger = { action: a, d };
-  ch.model.position.z = d;
-  const f = G.fight;
-  if (f && f.guy === ch && G.mode === 'fight') {       // Rusana closes the distance
-    f.rusFrom = G.rus.group.position.clone(); f.snapT = 0; f.snapDur = 0.5; f.stepping = true;
-    if (!f.attack) { const w = G.rus.play('rus_walk', { fade: 0.2, loop: true }); if (w && /walk/.test(G.rus.currentName)) w.timeScale = 0.75; }
-  }
+  const p = ch.group.position, p0 = p.clone();
+  p.x -= Math.sin(ch.yaw) * d; p.z -= Math.cos(ch.yaw) * d;
+  collide(p, 0.3, G.gym, guyCircles(ch).concat([{ x: G.rus.group.position.x, z: G.rus.group.position.z, r: 0.2 }]));
+  const off = p0.sub(p);                                       // world offset that keeps the visual in place
+  off.applyAxisAngle(_Y, -ch.yaw);                             // → local
+  ch.stagger = { action: a, off };
+  ch.model.position.copy(off);
+}
+const _Y = new THREE.Vector3(0, 1, 0);
+
+function tapOut(g) {
+  if (!g.bout) return;
+  g.bout.autoTap(); if (G.engaged === g) updateFightHud();
+  UI.text('#f-log', `${g.def.name} тапает — сдаётся!`);
+  g.victoryAt = G.realTime + 1.4;
 }
 
-function tapOut() {
-  const f = G.fight; if (!f) return;
-  f.bout.autoTap(); updateFightHud();
-  UI.text('#f-log', `${f.guy.def.name} тапает — сдаётся!`);
-  f.victoryAt = G.realTime + 1.4;
-}
-
-function strikePoint(move, out) {
+function strikePoint(move, target, out) {
   // groin: just below the guy's pelvis bone, on his front side; nudged toward Rusana's striking bone
-  const rus = G.rus, guy = G.fight.guy;
-  guy.boneWorld('pelvis', out); out.y -= 0.09; out.addScaledVector(G.fight.dir, -0.08);
+  const rus = G.rus;
+  target.boneWorld('pelvis', out); out.y -= 0.09;
+  const d = _v2.subVectors(target.group.position, rus.group.position).setY(0).normalize();
+  out.addScaledVector(d, -0.08);
   const bone = move === 'kick' ? (rus.bones.ball_r ? 'ball_r' : 'foot_r') : 'calf_r';
   if (rus.bones[bone]) out.lerp(rus.boneWorld(bone, new THREE.Vector3()), 0.25);
   return out;
@@ -543,63 +696,74 @@ function toScreen(p) {
   return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
 }
 
-function onContact(f) {
-  const a = f.attack; a.contactDone = true;
-  const res = f.bout.resolve(a.clean);
-  const fin = res.clean && (a.finishing || res.finished);
-  f.lastHit = { clean: res.clean, finishing: fin, move: a.move, next: res.next };
-  G.audio.impact(res.clean ? (fin ? 'fin' : a.move) : 'thigh');
-  if (res.clean && !fin && G.realTime - (f.lastLine ?? -99) > 5 && talk(0.4)) { G.audio.rus('rus_hit', { delay: 1.05 }); f.lastLine = G.realTime; }
-  const p = strikePoint(a.move, new THREE.Vector3());
-  const scr = toScreen(p);
-  if (res.clean) {
-    G.hitStopUntil = G.realTime + (a.ci.hitStop ?? CFG.hitStop);
-    G.fx.impact(p, a.finishing ? 1.6 : 1.0);
-    G.fx.popup(a.finishing || res.finished ? 'ДОБИВАНИЕ!' : 'ЧИСТЫЙ!', { x: scr.x, y: scr.y - 40 });
-    G.fx.popup(`+${res.gained}`, { x: scr.x + 70, y: scr.y + 10 }, 'small');
-    if (res.comboMult > 1) G.fx.popup(`КОМБО ×${res.comboMult}`, { x: scr.x - 90, y: scr.y + 30 }, 'small');
-    UI.text('#f-log', `Чистый! ${STATE_RU[res.prev]} → ${STATE_RU[res.next]}` + (res.comboMult > 1 ? ` · комбо ×${res.comboMult}` : '') + (res.painMult > 1 ? ` · отёк ×${res.painMult}` : ''));
-  } else {
-    G.fx.smallHit(p);
-    G.fx.popup('Бедро! +0', { x: scr.x, y: scr.y - 30 }, 'miss');
-    UI.text('#f-log', 'Мимо — попала в бедро. +0 Hit.');
-  }
-  guyReact(f.guy, res.prev, res.next, res.clean, a.move, a.ci);
-  updateFightHud();
-  if (res.finished) { f.ended = true; f.victoryAt = G.realTime + 1.1; }
-  else if (res.clean && res.next === 'floor') f.ended = true;     // no more strikes; tapOut() → victory
-}
+const GRADE_CLS = { perfect: 'perfect', clean: '', glance: 'glance', miss: 'miss', block: 'block', caught: 'block' };
 
-function updateFight(dt) {
-  const f = G.fight, rus = G.rus;
-  // combo clock only runs while the guy is strikeable (his scripted recovery is not a player pause)
-  if ((guyReady(f.guy) || f.attack) && f.bout.tick(dt)) updateFightHud();
-  // position Rusana relative to the guy (snap/tween)
-  f.snapT = Math.min(1, f.snapT + dt / (f.snapDur || 0.15));
-  if (f.stepping && f.snapT >= 1) { f.stepping = false; if (!f.attack) rus.play('rus_idle', { fade: 0.25 }); }
-  const gp = f.guy.group.position;
-  const right = _v2.set(f.dir.z, 0, -f.dir.x);
-  const want = _v1.copy(gp).addScaledVector(f.dir, -f.dist).addScaledVector(right, -f.side);
-  const e = 1 - Math.pow(1 - f.snapT, 3);
-  rus.group.position.lerpVectors(f.rusFrom, want, e);
-  const a = f.attack;
-  if (a) {
-    const t = rus.time;
-    if (a.finishing && !a.slow && t >= a.ci.time - 0.28) { a.slow = true; G.slowUntil = G.realTime + 1.0; G.slowScale = 0.3; }
-    if (!a.contactDone && t >= a.ci.time) onContact(f);
-    if (a.contactDone && f.queued && !f.ended && !f.stepping && guyReady(f.guy) && t >= a.ci.time + CFG.cancelAfterContact) { const q = f.queued; f.queued = null; attack(q); }
-    else if (rus.finished) {
-      f.attack = null;
-      if (!f.stepping) rus.play('rus_idle', { fade: 0.3 });
-    }
+function onContact(a) {
+  a.contactDone = true;
+  const g = a.target;
+  if (!g) { G.audio.play && 0; return; }                   // air strike
+  const ci = a.ci;
+  const distErr = Math.abs(effDist(g) - ci.dist);
+  const angleDeg = a.bent ? 0 : facingAngle(g);
+  const timing = timingFor(g, a);
+  const defense = a.bent ? {} : { guard: g.layerW('guard'), catching: g.brain.catching };
+  let res = gradeStrike({ move: a.move, distErr, angleDeg, timing, defense });
+  if (G.forceGrade) res = { ...res, grade: G.forceGrade };
+  else if (G.forceClean !== undefined) res = { ...res, grade: G.forceClean ? 'clean' : 'glance' };
+  const grade = res.grade;
+  const now = G.gt;
+  g.pain.hit(grade === 'caught' ? 'miss' : grade, a.move, now);
+  if (!g.bout) g.bout = new Bout(g.def);
+  const r = g.bout.resolveHit(grade, g.pain.state);
+  const fin = r.clean && r.next === 'floor';
+  g.lastHit = { clean: r.clean, finishing: fin, move: a.move, grade };
+  G.lastContact = { t: now, target: g, grade };
+  G.lastGrade = { ...res, grade, distErr: +distErr.toFixed(3), angleDeg: +angleDeg.toFixed(1), timing, guard: +(defense.guard || 0).toFixed(2), pain: +g.pain.value.toFixed(1), next: r.next, open: a.open };
+  log('contact', g.def.name, G.lastGrade);
+  const p = strikePoint(a.move, g, new THREE.Vector3());
+  const scr = toScreen(p);
+  const label = fin ? 'ДОБИВАНИЕ!' : GRADE_RU[grade];
+  G.fx.popup(label, { x: scr.x, y: scr.y - 44 }, fin ? 'perfect' : GRADE_CLS[grade]);
+  if (r.clean) {
+    const hs = grade === 'perfect' ? COMBAT.hitStopPerfect : (ci.hitStop ?? CFG.hitStop);
+    G.hitStopUntil = G.realTime + hs;
+    G.audio.impact(fin ? 'fin' : a.move, { perfect: grade === 'perfect' });
+    G.fx.impact(p, fin ? 1.6 : grade === 'perfect' ? 1.35 : 1.0);
+    G.fx.popup(`+${r.gained}`, { x: scr.x + 80, y: scr.y + 6 }, 'small');
+    if (r.comboMult > 1) G.fx.popup(`КОМБО ×${r.comboMult}`, { x: scr.x - 100, y: scr.y + 30 }, 'small');
+    if (!fin && G.realTime - (G.lastLine ?? -99) > 5 && talk(0.4)) { G.audio.rus('rus_hit', { delay: 1.05 }); G.lastLine = G.realTime; }
+    UI.text('#f-log', `${GRADE_RU[grade]} ${STATE_RU[r.prev]} → ${STATE_RU[r.next]}` + (r.comboMult > 1 ? ` · комбо ×${r.comboMult}` : '') + (r.painMult > 1 ? ` · отёк ×${r.painMult}` : '') + (timing.open ? ' · в раскрытие' : timing.rhythm ? ' · в ритм' : ''));
+    guyReact(g, r.prev, r.next, true, a.move, ci, { bent: a.bent, hs });
+    g.afterHit = { grade, at: now + 0.2 };
+  } else if (grade === 'glance') {
+    G.audio.impact('thigh'); G.fx.smallHit(p);
+    UI.text('#f-log', angleDeg > COMBAT.angOk * 2 ? 'Скользом — он стоял боком.' : 'Скользом — не та дистанция.');
+    guyReact(g, r.prev, r.next, false, a.move, ci, { bent: a.bent });
+    g.afterHit = { grade, at: now + 0.1 };
+  } else if (grade === 'block') {
+    G.audio.impact('thigh'); G.fx.smallHit(p);
+    UI.text('#f-log', `${g.def.name} закрылся руками — блок.`);
+    g.setLayer('guard', 1, 12); g.brain.setMode('guard', 0.6); g.setLayer('guard', 1, 12);
+    g.afterHit = { grade, at: now + 0.35 };
+  } else if (grade === 'caught') {
+    UI.text('#f-log', `${g.def.name} поймал ногу! Не спамь удары.`);
+    a.caught = true; a.caughtT = 0; g.caughtLeg = true;
+    G.rus.current && (G.rus.current.timeScale = 0);             // her leg is held at the contact pose
+    G.audio.impact('thigh');
+    g.afterHit = { grade, at: now + 0.9 };
+  } else {
+    UI.text('#f-log', distErr > 0.3 ? 'Мимо — далеко.' : 'Мимо.');
+    g.afterHit = { grade, at: now + 0.1 };
   }
-  if (!f.attack && f.queued && !f.ended && guyReady(f.guy) && !f.stepping) { const q = f.queued; f.queued = null; attack(q); }
-  if (f.ended && f.victoryAt && G.realTime >= f.victoryAt) { f.victoryAt = 0; startVictory(); }
+  // knee that didn't land: let go of the clinch
+  if ((grade === 'block' || grade === 'miss') && clipBase(g) === 'clinched') g.play(g.pain.value > 10 ? 'guy_hurt' : 'guy_idle', { fade: 0.3 });
+  if (G.engaged === g || !G.engaged) { G.engaged = g; updateFightHud(); }
 }
 
 function updateFightHud() {
-  const f = G.fight; if (!f) return;
-  const b = f.bout;
+  const g = G.engaged; if (!g) return;
+  const b = g.bout || { hits: 0, comboMult: 1, swell: 0, score: 0, guyState: 'idle' };
+  UI.text('#fight-name', `${g.def.name}, ${g.def.age} · ${g.trait.ru}`);
   UI.text('#f-hits', String(b.hits));
   UI.text('#f-combo', `×${b.comboMult}`);
   UI.text('#f-swell', b.swell >= 1 ? `×1.25 (${b.swell})` : '—');
@@ -609,46 +773,69 @@ function updateFightHud() {
   const idx = GUY_STATES.indexOf(b.guyState);
   GUY_STATES.forEach((s, i) => { const el = document.createElement('span'); el.className = 'st' + (i < idx ? ' done' : i === idx ? ' cur' : ''); el.textContent = STATE_RU[s]; tr.appendChild(el); });
 }
-
-function updateCombatCamera(dt) {
-  const f = G.fight; const c = G.cam;
-  const pos = new THREE.Vector3(), look = new THREE.Vector3();
-  combatCamPose(f, c.side, pos, look);
-  const k = G.mode === 'fight' && f.snapT < 1 ? 5 : 6;
-  c.pos.lerp(pos, 1 - Math.exp(-k * dt));
-  c.look.lerp(look, 1 - Math.exp(-k * dt));
+function updatePainHud() {
+  const g = G.engaged; if (!g) return;
+  $('#f-pain').style.width = (g.pain.frac * 100).toFixed(1) + '%';
+  $('#f-pain').parentElement.classList.toggle('series', g.pain.chain > 0 && G.gt - g.pain.lastHit < COMBAT.seriesWindow);
 }
 
-function leaveFight() {
-  const f = G.fight; if (!f || f.ended) return;
-  f.guy.queue = []; f.guy.timeline = []; f.guy.state = 'idle'; f.guy.stagger = null; f.guy.model.position.z = 0; f.guy.play('guy_idle', { fade: 0.4 }); f.guy.setExpr({ smug: 0.6 });
-  G.rus.play('rus_idle', { fade: 0.3 });
-  // step back a little
-  G.rus.group.position.addScaledVector(f.dir, -0.4);
-  G.fight = null; G.mode = 'explore';
-  G.cam.yaw = G.rus.yaw + Math.PI;
-  UI.show('#hud-fight', false); UI.show('#hud-explore', true);
+// ---------------------------------------------------------------- camera
+// Third-person follow. When a guy is engaged the look point moves toward the pair and, while Rusana stands
+// still and the mouse wasn't used for 2 s, the yaw drifts to a 3/4 side view (C flips the side).
+function updateExploreCamera(dt) {
+  const c = G.cam, p = G.rus.group.position;
+  const e = G.engaged && !G.engaged.beaten && flatDist(G.engaged.group.position, p) < 3.4 ? G.engaged : null;
+  if (e && !c.engGuy) { c.side = c.sideLocked ? c.side : pickSideNearest(e); }
+  if (e) c.engGuy = e;
+  c.eng = damp(c.eng, e ? 1 : 0, 3, dt);
+  if (c.eng < 0.02 && !e) c.engGuy = null;
+  const target = _v1.set(p.x, 1.25, p.z);
+  if (c.engGuy) {
+    const gp = c.engGuy.group.position;
+    target.lerp(_v4.set((p.x + gp.x) / 2, 1.0, (p.z + gp.z) / 2), c.eng * 0.85);
+    if (e && !G.moving && G.realTime - c.lastDrag > 2) c.yaw = angDamp(c.yaw, sideYaw(e, c.side), 1.8, dt);
+  }
+  const pitch = THREE.MathUtils.lerp(c.pitch, 0.17, c.eng * 0.7), dist = c.dist * (1 - 0.1 * c.eng);
+  const off = _v2.set(Math.sin(c.yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(c.yaw) * Math.cos(pitch)).multiplyScalar(dist);
+  const want = _v3.copy(target).add(off);
+  const B = G.gym.bounds;
+  want.x = THREE.MathUtils.clamp(want.x, B.x0 - 0.1, B.x1 + 0.1); want.z = THREE.MathUtils.clamp(want.z, B.z0 - 0.1, B.z1 + 0.1); want.y = THREE.MathUtils.clamp(want.y, 0.4, 5.2);
+  c.pos.lerp(want, 1 - Math.exp(-8 * dt));
+  c.look.lerp(target, 1 - Math.exp(-10 * dt));
+}
+function sideYaw(g, side) {
+  const rp = G.rus.group.position, gp = g.group.position;
+  const dir = _v3.set(gp.x - rp.x, 0, gp.z - rp.z); if (dir.lengthSq() < 1e-6) return G.cam.yaw; dir.normalize();
+  const a = THREE.MathUtils.degToRad(20);
+  const dx = dir.z * side * Math.cos(a) - dir.x * Math.sin(a), dz = -dir.x * side * Math.cos(a) - dir.z * Math.sin(a);
+  return Math.atan2(dx, dz);
+}
+function pickSideNearest(g) {
+  const a = Math.abs(wrapA(sideYaw(g, 1) - G.cam.yaw)), b = Math.abs(wrapA(sideYaw(g, -1) - G.cam.yaw));
+  return a <= b ? 1 : -1;
 }
 
 // ---------------------------------------------------------------- victory
-function startVictory() {
-  const f = G.fight;
-  const gain = f.bout.repGain();
+function startVictory(g) {
+  const gain = g.bout.repGain();
   G.rep += gain;
-  f.guy.beaten = true;
+  g.beaten = true;
+  const rp = G.rus.group.position;
+  G.duel = { guy: g, dir: new THREE.Vector3(g.group.position.x - rp.x, 0, g.group.position.z - rp.z).normalize() };
+  G.act = null; G.buffer = null;
   G.rus.play('rus_victory', { fade: 0.35, loop: false });
   G.rus.setExpr({ smirk: 0.9 });
   G.mode = 'victory'; G.victoryT = 0;
-  UI.show('#hud-fight', false);
-  UI.text('#victory-text', f.guy.def.win);
-  UI.text('#victory-stats', `Удары: ${f.bout.hits} · Очки: ${f.bout.score} · Репутация +${gain} (всего ${G.rep})`);
+  UI.show('#hud-fight', false); $('#prompt').classList.add('hidden');
+  UI.text('#victory-text', g.def.win);
+  UI.text('#victory-stats', `Удары: ${g.bout.hits}` + (g.bout.perfects ? ` (идеальных ${g.bout.perfects})` : '') + ` · Очки: ${g.bout.score} · Репутация +${gain} (всего ${G.rep})`);
   G.victoryCardAt = G.realTime + 0.9;
   G.audio.rus('rus_vic', { delay: 0.9 });
   UI.text('#rep-display', `Репутация: ${G.rep}`);
 }
 
 function updateVictoryCamera(dt) {
-  const f = G.fight; G.victoryT += dt;
+  const f = G.duel; G.victoryT += dt;
   const rp = G.rus.group.position;
   const ang = G.rus.yaw + 0.75 * G.cam.side + Math.sin(G.victoryT * 0.25) * 0.25;
   const pos = _v1.set(rp.x + Math.sin(ang) * 2.5, 1.35, rp.z + Math.cos(ang) * 2.5);
@@ -659,11 +846,14 @@ function updateVictoryCamera(dt) {
 function continueAfterVictory() {
   if (G.mode !== 'victory') return;
   UI.show('#victory', false); UI.show('#hud-explore', true);
-  const f = G.fight;
+  const f = G.duel;
   G.rus.play('rus_idle', { fade: 0.4 }); G.rus.setExpr({ cold: 0.6 });
   G.rus.group.position.addScaledVector(f.dir, -0.35);
-  f.guy.label.classList.add('beaten'); f.guy.label.textContent = `${f.guy.def.name} — повержен`;
-  G.fight = null; G.mode = 'explore';
+  collide(G.rus.group.position, 0.28, G.gym, guyCircles(null));
+  f.guy.label.classList.add('beaten');
+  f.guy.label.querySelector('.nl-name').textContent = `${f.guy.def.name} — повержен`;
+  f.guy.labelEls.status.textContent = ''; f.guy.labelEls.painBox.style.display = 'none';
+  G.mode = 'explore'; G.engaged = null;
   G.cam.yaw = G.rus.yaw + Math.PI;
 }
 
@@ -675,19 +865,31 @@ function updateMenuCamera(dt) {
   G.cam.look.lerp(_v2.set(0, 1.2, -1), 1 - Math.exp(-2 * dt));
 }
 
-// ---------------------------------------------------------------- labels
+// ---------------------------------------------------------------- labels (name · trait, status / state, pain, speech)
 function updateLabels() {
   const show = G.mode === 'explore';
   for (const g of G.guys) {
     if (!show) { g.label.style.display = 'none'; continue; }
-    const p = g.group.position.clone(); p.y += g.beaten ? 0.6 : 2.05;
-    const v = p.clone().project(camera);
+    const p = _v1.copy(g.group.position); p.y += g.beaten ? 0.6 : 2.05;
+    const v = _v2.copy(p).project(camera);
     const dist = p.distanceTo(camera.position);
     if (v.z > 1 || dist > 14) { g.label.style.display = 'none'; continue; }
     g.label.style.display = 'block';
     g.label.style.left = ((v.x * 0.5 + 0.5) * innerWidth).toFixed(1) + 'px';
-    g.label.style.top = ((-v.y * 0.5 + 0.5) * innerHeight).toFixed(1) + 'px';
+    const eng = g === G.engaged && !g.beaten;
+    g.label.classList.toggle('eng', eng);                // the fight HUD already shows his name · trait
+    g.label.style.top = Math.max(eng ? 150 : 40, (-v.y * 0.5 + 0.5) * innerHeight).toFixed(1) + 'px';
     g.label.style.opacity = String(THREE.MathUtils.clamp(1.4 - dist / 10, 0.3, 1));
+    if (g.beaten) continue;
+    const st = guyFree(g) ? g.brain.status() : g.caughtLeg ? 'держит ногу' : (g.state !== 'idle' ? STATE_RU[g.state] : '');
+    if (st !== g.lastStatus) {
+      g.lastStatus = st; g.labelEls.status.textContent = st;
+      g.labelEls.status.className = 'nl-status' + (/замах|толкает/.test(st) ? ' danger' : /закрылся|ловит|отвернулся|держит/.test(st) ? ' guard' : /дразнит|выдохся|финт/.test(st) ? ' open' : '');
+    }
+    const pf = g.pain.frac;
+    g.labelEls.painBox.style.display = pf > 0.005 ? 'block' : 'none';
+    g.labelEls.pain.style.width = (pf * 100).toFixed(1) + '%';
+    if (g.sayUntil && G.realTime > g.sayUntil) { g.sayUntil = 0; g.labelEls.say.classList.remove('on'); }
   }
 }
 
@@ -701,13 +903,12 @@ function talk(p) { return G.alwaysTalk || Math.random() < p; }
 function guyVoice(g, clip) {
   const A = G.audio, key = g.def.id, vr = g.def.voice || 1;
   const n = String(clip).replace(/^guy_/, '');
-  const f = G.fight && G.fight.guy === g ? G.fight : null;
-  const hit = f && f.lastHit;
+  const hit = g.lastHit;
   const r = () => vr * (0.97 + Math.random() * 0.06);
   if (/^flinch/.test(n)) {
     if (!hit) return;
     if (hit.finishing) A.voice(key, 'v_scream', { delay: 0.05, rate: r() * 0.98, gain: 1 });
-    else if (hit.clean) A.voice(key, 'v_flinch', { delay: 0.03 + Math.random() * 0.05, rate: r(), gain: 0.95 });
+    else if (hit.clean) A.voice(key, 'v_flinch', { delay: 0.03 + Math.random() * 0.05, rate: r(), gain: hit.grade === 'perfect' ? 1 : 0.95 });
     else if (Math.random() < 0.7) A.voice(key, 'v_flinch', { delay: 0.05, rate: r() * 1.04, gain: 0.45 });
   } else if (n === 'double_over') {
     if (hit && hit.clean && !hit.finishing) A.voice(key, 'v_groan', { delay: 0.1, rate: r(), gain: 0.95 });
@@ -726,9 +927,10 @@ function guyVoice(g, clip) {
 const _fv = new THREE.Vector3();
 function updateFootsteps(dt) {
   const rus = G.rus; if (!rus || !rus.bones.foot_l) return;
-  const walking = /walk/.test(rus.currentName || '') && (G.mode === 'explore' || (G.mode === 'fight' && G.fight && G.fight.stepping));
+  const dashing = G.act && G.act.type === 'dash';
+  const walking = /walk/.test(rus.currentName || '') && G.mode === 'explore';
   const st = rus.steps || (rus.steps = { l: { armed: false, min: 0.2 }, r: { armed: false, min: 0.2 } });
-  const speed = G.mode === 'explore' ? Math.hypot(G.vel.x, G.vel.z) : 0.8;
+  const speed = dashing ? 2.5 : Math.hypot(G.vel.x, G.vel.z);
   for (const s of ['l', 'r']) {
     const fs = st[s];
     const h = rus.boneWorld('foot_' + s, _fv).y - rus.group.position.y;
@@ -758,12 +960,12 @@ function frame(fixedDt) {
   G.timeScale = damp(G.timeScale, ts, ts === 0 ? 1e3 : 12, realDt);
   if (ts === 0) G.timeScale = 0;
   const dt = realDt * G.timeScale;
-  G.time += realDt;
+  G.time += realDt; G.gt += dt;
 
-  if (G.mode === 'explore') { updateExplore(dt || realDt * 0); updateExploreCamera(realDt); }
-  else if (G.mode === 'fight') { updateFight(dt); updateCombatCamera(realDt); }
+  if (G.mode === 'explore') { updateExplore(dt, realDt); updateExploreCamera(realDt); }
   else if (G.mode === 'victory') updateVictoryCamera(realDt);
   else if (G.mode === 'menu') updateMenuCamera(realDt);
+  for (const g of G.guys) if (g.victoryAt && G.realTime >= g.victoryAt && G.mode === 'explore') { g.victoryAt = 0; startVictory(g); }
 
   // characters
   for (const ch of [G.rus, ...G.guys]) {
@@ -778,13 +980,13 @@ function frame(fixedDt) {
         const a = ch.current, dur = a ? a.getClip().duration : 0;
         const looping = a && a.loop !== THREE.LoopOnce;
         const since = looping ? ch.playT : ch.playT - dur / Math.max(1e-3, Math.abs(a ? a.timeScale : 1));
-        if ((looping || ch.finished) && since >= (q.hold || 0)) { ch.queue.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop }); if (q.onStart) q.onStart(); }
+        if ((looping || ch.finished) && since >= (q.hold || 0)) { ch.queue.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop, timeScale: q.ts || 1 }); if (q.onStart) q.onStart(); }
       }
     }
     if (ch.stagger) {   // keep the baked double_over offset glued to the action weight
       const w = ch.stagger.action.enabled ? ch.stagger.action.getEffectiveWeight() : 0;
-      ch.model.position.z = ch.stagger.d * w;
-      if (w <= 1e-3) { ch.stagger = null; ch.model.position.z = 0; }
+      ch.model.position.copy(ch.stagger.off).multiplyScalar(w);
+      if (w <= 1e-3) { ch.stagger = null; ch.model.position.set(0, 0, 0); }
     }
     if (ch.blob) {
       const pv = ch.bones.pelvis ? ch.boneWorld('pelvis', _v1) : ch.group.position;
@@ -794,7 +996,7 @@ function frame(fixedDt) {
     }
   }
   updateFootsteps(realDt);
-  G.audio.setBus('music', G.mode === 'fight' || G.mode === 'victory' ? 0.11 : 0.2, 1.2);
+  G.audio.setBus('music', G.engaged || G.mode === 'victory' ? 0.11 : 0.2, 1.2);
   if (G.victoryCardAt && G.realTime >= G.victoryCardAt) { G.victoryCardAt = 0; if (G.mode === 'victory') UI.show('#victory', true); }
   G.gym.update(G.time, dt);
   G.fx.update(dt, realDt);
@@ -804,7 +1006,7 @@ function frame(fixedDt) {
   updateLabels();
   if (G.onFrame) G.onFrame();
   renderer.info.reset();
-  composer.render(realDt);
+  if (!G.noRender) composer.render(realDt);     // G.noRender = test hook (fast headless logic runs)
   if ((G.frameN = (G.frameN || 0) + 1) % 30 === 0) G.renderInfo = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures, progs: renderer.info.programs.length };
 
   // perf: fps counter + adaptive resolution
@@ -822,11 +1024,41 @@ renderer.setAnimationLoop(() => { if (!G.manual) frame(); });
 // deterministic stepping for offline capture (demo video): G.manual = true; G.step(1/30)
 G.step = (dt = 1 / 30) => frame(dt);
 
-// test / automation hooks
+// test / automation hooks (console): see README «Test hooks»
 Object.assign(G, {
-  startGame, enterFight, attack, leaveFight, continueAfterVictory,
-  goTo(i) { const g = G.guys[i]; const p = g.group.position; const d = new THREE.Vector3(Math.sin(g.yaw), 0, Math.cos(g.yaw)); G.rus.group.position.copy(p).addScaledVector(d, 1.3); G.rus.yaw = Math.atan2(-d.x, -d.z); G.rus.group.rotation.y = G.rus.yaw; G.cam.yaw = G.rus.yaw + Math.PI; },
-  info() { return { mode: G.mode, rep: G.rep, near: G.near && G.near.def.name, fight: G.fight && { state: G.fight.bout.guyState, hits: G.fight.bout.hits, score: G.fight.bout.score }, assets: G.assetsInfo, contact: G.contact, fps: G.fps, dpr }; },
+  startGame, continueAfterVictory,
+  strike: pressStrike,                       // __bb.strike('kick' | 'knee') — same as pressing J / K
+  // place Rusana in front of guy i (d = root distance, default = ideal contact distance), both facing each other
+  goTo(i, d, { angle = 0 } = {}) {
+    const g = G.guys[i]; const p = g.group.position;
+    const dist = d ?? G.contact.kick.dist;
+    const yaw = g.yaw + THREE.MathUtils.degToRad(angle);
+    const dv = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    G.rus.group.position.copy(p).addScaledVector(dv, dist);
+    G.rus.yaw = Math.atan2(-dv.x, -dv.z); G.rus.group.rotation.y = G.rus.yaw;
+    G.cam.yaw = G.rus.yaw + Math.PI * 0.75;
+    G.act = null; G.buffer = null; G.vel.set(0, 0, 0);
+  },
+  guy(i) { return typeof i === 'number' ? G.guys[i] : G.guys.find((g) => g.def.id === i || g.def.name === i); },
+  // force an AI behaviour: 'guard' | 'turn' | 'step' | 'flee' | 'feint' | 'taunt' | 'windup' | 'catch'
+  guyDo(i, mode) {
+    const g = G.guy(i), b = g.brain;
+    if (mode === 'flee') b.startFlee();
+    else if (mode === 'windup') { b.setMode('windup', 0.5); b.open(0.5, 'windup'); }
+    else if (mode === 'taunt') { b.setMode('taunt', 1.0); b.open(1.0, 'taunt'); b.say(b.line(), 1); }
+    else if (mode === 'catch') { b.setMode('catch', 1.5); b.catching = true; g.setLayer('guard', 0.8, 9); }
+    else if (mode === 'guard') { b.setMode('guard', 2.0); g.setLayer('guard', 1, 7); }
+    else if (mode === 'turn') { b.setMode('turn', 1.5); b.turnWant = 1.0; }
+    else b.setMode(mode, 1);
+  },
+  setPain(i, v) { const g = G.guy(i); g.pain.value = v; g.pain.lastHit = G.gt; },
+  info() {
+    const e = G.engaged;
+    return { mode: G.mode, rep: G.rep, act: G.act && { type: G.act.type, move: G.act.move, target: G.act.target && G.act.target.def.name }, engaged: e && e.def.name,
+      lastGrade: G.lastGrade,
+      guys: G.guys.map((g) => ({ name: g.def.name, trait: g.def.trait, beaten: g.beaten, state: g.state, clip: g.currentName, ai: g.brain.mode, guard: +g.layerW('guard').toFixed(2), pain: +g.pain.value.toFixed(1), bout: g.bout && { state: g.bout.guyState, hits: g.bout.hits, score: g.bout.score }, dist: +flatDist(g.group.position, G.rus.group.position).toFixed(2), eff: +effDist(g).toFixed(3), angle: +facingAngle(g).toFixed(1), strikeable: strikeable(g) })),
+      contact: { kick: G.contact.kick.dist, knee: G.contact.knee.dist }, fps: G.fps, dpr };
+  },
 });
 
 init().catch((e) => { console.error(e); const el = $('#err'); el.textContent = 'Ошибка загрузки: ' + e.message; el.classList.remove('hidden'); });

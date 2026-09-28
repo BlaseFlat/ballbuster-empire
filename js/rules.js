@@ -26,10 +26,17 @@ export class Bout {
     }
     return false;
   }
-  resolve(clean) {
+  // Stage 1: grade comes from the accuracy model (combat.js), the target state from the pain meter.
+  // Landed strikes (perfect / clean) count as Hits: combo ×1.5 (3 in a row, gaps ≤1.5 s of strikeable time),
+  // swell ×1.25 after 2, «Идеально» +0.5, plus the state bonus for every state passed (a big hit can skip states).
+  // Glancing / blocked / missed = 0 points (still hurt a little via the pain meter). He never goes past
+  // 'floor' from a hit: floor → he taps out (autoTap) → victory.
+  resolveHit(grade, painState) {
     const prev = this.guyState;
-    if (!clean) return { clean: false, prev, next: prev, gained: 0 };
+    const landed = grade === 'perfect' || grade === 'clean';
+    if (!landed) return { clean: false, grade, prev, next: prev, gained: 0 };
     this.hits += 1; this.cleanHits += 1;
+    if (grade === 'perfect') this.perfects = (this.perfects || 0) + 1;
     const now = this.time;
     if (this.lastCleanAt > 0 && now - this.lastCleanAt > COMBO_WINDOW) { this.comboMult = 1; this.comboChain = 1; }
     else this.comboChain += 1;
@@ -37,15 +44,15 @@ export class Bout {
     this.lastCleanAt = now;
     if (this.cleanHits >= SWELL_AFTER) this.swell = Math.min(2, this.cleanHits - 1);
     const painMult = this.swell >= 1 ? 1.25 : 1;
-    let gained = 1 * this.comboMult * painMult;
-    const idx = GUY_STATES.indexOf(prev);
-    let next = prev;
-    if (idx < GUY_STATES.length - 1) { next = GUY_STATES[idx + 1]; this.guyState = next; gained += STATE_POINTS[next] || 0; }
+    let gained = (grade === 'perfect' ? 1.5 : 1) * this.comboMult * painMult;
+    const iPrev = GUY_STATES.indexOf(prev), iFloor = GUY_STATES.indexOf('floor');
+    const iNext = Math.min(iFloor, Math.max(iPrev, GUY_STATES.indexOf(painState), 1));
+    for (let i = iPrev + 1; i <= iNext; i++) gained += STATE_POINTS[GUY_STATES[i]] || 0;
+    const next = GUY_STATES[Math.max(iPrev, iNext)];
+    this.guyState = next;
     gained = Math.round(gained * 10) / 10;
     this.score = Math.round((this.score + gained) * 10) / 10;
-    const finished = this.guyState === 'tap';
-    if (finished) this.ended = true;
-    return { clean: true, prev, next, gained, comboMult: this.comboMult, painMult, finished };
+    return { clean: true, grade, prev, next, gained, comboMult: this.comboMult, painMult, finished: false };
   }
   // He is on the floor and taps out (DESIGN §4 «Победа: tap / floor+добивка / сдача»): tap state bonus, no extra Hit.
   autoTap() {

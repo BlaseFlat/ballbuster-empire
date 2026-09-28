@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 const _v = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _ax = new THREE.Vector3();
 
 // Wrapper around a rigged GLB: animation mixer with defensive clip lookup + crossfades,
 // facial morph expressions (driven by anim_meta.json if present, else by game state), blinking.
@@ -47,6 +48,11 @@ export class Character {
     this.blink = 0;
     this.warned = new Set();
     this.speed = 1; // per-character time scale multiplier (hit-stop / slow-mo applied globally)
+    // procedural overlays applied on top of the mixer every frame (see applyOverlays)
+    this.rest = new Map(); for (const b of Object.values(this.bones)) this.rest.set(b, b.quaternion.clone());
+    this.touched = new Set();
+    this.layers = {};     // name → { pose: [{bone, q, k}], w, target, speed }
+    this.adds = [];       // one-frame additive rotations [{bone, axis (character space), angle}]
     if (!this.clips.length) console.warn(`[bb] ${name}: GLB has no animation clips — static pose`);
   }
 
@@ -128,10 +134,55 @@ export class Character {
 
   setExpr(obj) { this.baseExpr = obj || {}; }
 
-  update(dt) {
+  update(dt, realDt = dt) {
     this.playT = (this.playT || 0) + dt;
+    for (const b of this.touched) b.quaternion.copy(this.rest.get(b));   // un-do last frame's overlays
     this.mixer.update(dt);
+    this.applyOverlays(realDt);
     this.updateExpr(dt);
+  }
+
+  // ---- procedural overlays -------------------------------------------------------------
+  // Pose layer: bone rotations sampled from a clip at time t (e.g. hands-over-groin from 'stun'),
+  // blended over whatever the mixer plays with a per-bone factor k. Used for the guard.
+  samplePose(clipName, t, weights) {
+    const clip = this.findClip(clipName); if (!clip) return null;
+    const out = [];
+    for (const tr of clip.tracks) {
+      const m = /^(.+)\.quaternion$/.exec(tr.name); if (!m) continue;
+      const bone = this.bones[m[1]]; if (!bone) continue;
+      const k = typeof weights === 'function' ? weights(m[1]) : weights[m[1]];
+      if (!k) continue;
+      const v = tr.createInterpolant().evaluate(Math.min(t, clip.duration));
+      out.push({ bone, q: new THREE.Quaternion(v[0], v[1], v[2], v[3]), k });
+    }
+    return out;
+  }
+  defineLayer(name, pose, speed = 8) { if (pose) this.layers[name] = { pose, w: 0, target: 0, speed }; return this.layers[name]; }
+  setLayer(name, target, speed) { const l = this.layers[name]; if (!l) return; l.target = target; if (speed) l.speed = speed; }
+  layerW(name) { const l = this.layers[name]; return l ? l.w : 0; }
+  // Additive rotation for this frame, axis given in the character's own space (x = his left, y = up, z = forward).
+  addRot(boneName, axis, angle) { const b = this.bones[boneName]; if (b && angle) this.adds.push({ bone: b, axis, angle }); }
+
+  applyOverlays(dt) {
+    for (const l of Object.values(this.layers)) {
+      l.w += (l.target - l.w) * (1 - Math.exp(-l.speed * dt));
+      if (Math.abs(l.w - l.target) < 1e-3) l.w = l.target;
+      if (l.w <= 1e-3) continue;
+      for (const p of l.pose) { p.bone.quaternion.slerp(p.q, l.w * p.k); this.touched.add(p.bone); }
+    }
+    if (!this.adds.length) return;
+    this.group.updateMatrixWorld(true);
+    const gq = this.group.getWorldQuaternion(_q2);
+    for (const a of this.adds) {
+      const par = a.bone.parent;
+      _ax.copy(a.axis).applyQuaternion(gq);                       // character space → world
+      par.getWorldQuaternion(_q).invert(); _ax.applyQuaternion(_q).normalize();   // → parent space
+      a.bone.quaternion.premultiply(_q.setFromAxisAngle(_ax, a.angle));
+      a.bone.updateMatrixWorld(true);
+      this.touched.add(a.bone);
+    }
+    this.adds.length = 0;
   }
 
   updateExpr(dt) {

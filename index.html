@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="bb-version" content="6" />
+  <meta name="bb-version" content="7" />
   <meta name="rating" content="adult" />
   <title>Боллбастер: Империя паха — 3D (21+)</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2230%22 fill=%22%23e0243c%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-size=%2234%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22%3EБ%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/fonts.css?v=6" />
-  <link rel="stylesheet" href="css/style.css?v=6" />
+  <link rel="stylesheet" href="css/fonts.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=7" />
   <script type="importmap">
   {
     "imports": {
       "three": "./vendor/three/three.module.js",
       "three/addons/": "./vendor/three/addons/",
-      "@bb/config": "./js/config.js?v=6",
-      "@bb/loader": "./js/loader.js?v=6",
-      "@bb/gym": "./js/gym.js?v=6",
-      "@bb/character": "./js/character.js?v=6",
-      "@bb/fx": "./js/fx.js?v=6",
-      "@bb/rules": "./js/rules.js?v=6",
-      "@bb/audio": "./js/audio.js?v=6",
-      "@bb/main": "./js/main.js?v=6"
+      "@bb/config": "./js/config.js?v=7",
+      "@bb/loader": "./js/loader.js?v=7",
+      "@bb/gym": "./js/gym.js?v=7",
+      "@bb/character": "./js/character.js?v=7",
+      "@bb/fx": "./js/fx.js?v=7",
+      "@bb/rules": "./js/rules.js?v=7",
+      "@bb/audio": "./js/audio.js?v=7",
+      "@bb/combat": "./js/combat.js?v=7",
+      "@bb/ai": "./js/ai.js?v=7",
+      "@bb/main": "./js/main.js?v=7"
     }
   }
   </script>
@@ -50,8 +52,9 @@
       <a class="btn ghost" id="btn-legacy" href="legacy/">Старая 2D-версия</a>
       <p class="disclaimer">Только для взрослых 21+. Жёсткий тон, удары в пах, доминирование.
         Все персонажи вымышлены и совершеннолетние (21+).</p>
-      <p class="controls-hint">WASD / стрелки — ходьба · мышь (зажать) — камера · E — подойти<br/>
-        Бой: J / 1 — ап-кик · K / 2 — колено · Esc — отступить · M — звук</p>
+      <p class="controls-hint">WASD / стрелки — ходьба · мышь (зажать) — камера · колесо — зум<br/>
+        J / 1 — ап-кик · K / 2 — колено (в любой момент, рывок к ближайшему парню впереди) · C — сторона камеры · M — звук<br/>
+        Меткость = дистанция + угол + тайминг. Бей в раскрытие (дразнит, замах, выдохся), не спамь — поймает ногу.</p>
     </div>
   </section>
 
@@ -61,14 +64,15 @@
       <span class="chip">Спортзал «Империя»</span>
       <span class="chip" id="rep-display">Репутация: 0</span>
     </div>
-    <div id="prompt" class="prompt hidden">E — подойти</div>
-    <div class="hud-bottom-hint">WASD — ходьба · зажми мышь — камера · колесо — зум</div>
+    <div id="prompt" class="prompt hidden">J — ап-кик · K — колено</div>
+    <div class="hud-bottom-hint">WASD — ходьба · J / 1 — ап-кик · K / 2 — колено · C — камера · зажми мышь — обзор · колесо — зум</div>
   </section>
 
   <!-- Fight HUD -->
   <section id="hud-fight" class="hud">
     <div class="fight-top">
       <div class="fight-name" id="fight-name">Дима, 22</div>
+      <div class="pain-bar" title="Боль: копится от ударов, серия ломает быстрее, медленно спадает"><i id="f-pain"></i></div>
       <div class="state-track" id="state-track"></div>
     </div>
     <div class="fight-stats">
@@ -79,7 +83,7 @@
     </div>
     <div class="fight-state" id="f-state">Состояние: стоит</div>
     <div class="fight-log" id="f-log">J / 1 — ап-кик · K / 2 — колено</div>
-    <div class="fight-keys"><span class="key">J</span> ап-кик <span class="key">K</span> колено <span class="key">Esc</span> отступить</div>
+    <div class="fight-keys"><span class="key">J</span> ап-кик <span class="key">K</span> колено <span class="key">C</span> камера · отойти — просто уйти</div>
   </section>
 
   <!-- Victory -->

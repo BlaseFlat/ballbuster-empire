@@ -14,29 +14,30 @@ cd bb3d-web && python3 -m http.server 8080   # open http://localhost:8080/  (?de
 | Context | Keys |
 |---|---|
 | Menu | НАЧАТЬ / Enter |
-| Gym | WASD / arrows — walk · hold mouse + drag — orbit camera · wheel — zoom · **E** — подойти (start fight) |
-| Fight | **J / 1** — ап-кик (`rus_kick_up`) · **K / 2** — колено (`rus_knee`) · **C** — flip camera side · **Esc** — отступить |
-| Victory | E / Enter — продолжить |
-| Any | ` (backquote) / F2 — fps counter |
+| Gym (open combat, no separate fight mode) | WASD / arrows — walk · hold mouse + drag — orbit camera · wheel — zoom · **J / 1** — ап-кик (`rus_kick_up`) · **K / 2** — колено (`rus_knee`) · **C** — flip combat-camera side · walk away = leave |
+| Victory | E / Enter / Space — продолжить |
+| Any | **M** — sound · ` (backquote) / F2 — fps counter |
+
+## Open combat (stage 1, v7)
+- **Strikes any time.** J/K auto-target the nearest guy in a 70° cone in front of Rusana (or of the WASD direction; a guy right next to her counts from any side) within 2.3 m. Slightly out of range → a short lunge inside the strike; farther → a quick dash, then the strike. A doubled-over guy only takes the knee (contact adjusted to his hips-back pose); on his knees / on the floor he can't be struck (wait until he gets up). Presses during a strike are buffered; after contact + 0.38 s the next strike cancels the recovery.
+- **Accuracy instead of dice** (`js/combat.js`, tunables in `COMBAT` in `js/config.js`): distance error at the contact frame vs the ideal 0.667 m root-to-root (CONTACT.json; measured at his pelvis, so hips-back poses count), his facing angle (front vs side/back), timing (striking into an opening: taunt, wind-up, feint, winded after running, unaware guy; or in rhythm 0.2–0.9 s after the previous landed hit; −penalty straight out of a long dash). The in-strike lunge corrects 72 % of the distance error, the rest shows as inaccuracy → stand at the right distance for «Идеально». Grades: **Идеально** (bonus damage/score, longer hit-stop, bigger fx + extra impact layer) · **Чисто** · **Скользом** · **Мимо** · **Блок** · **Поймал ногу!**
+- **Pain meter** instead of hit counting: perfect 30 / clean 20 / glance 7 / block 3 (knee 6) pain, knee ×1.1, series (hits ≤1.9 s apart) +15 % per hit (max 3), decays 3.2/s after 1.2 s without hits, divided by the trait's toughness. Thresholds: вздрогнул 10 → согнулся 34 → на коленях 62 → на полу 95 → тап → victory. Recovery is shorter: he holds the bent-over pose ~0.7 s (knee-able) and gets up 1.35× faster.
+- **Guy AI** (`js/ai.js`), all telegraphed (status line in his label + pose): closes up with hands over the groin (guard pose layered from the `stun` clip; blocks), turns his hip away, steps back, runs away (procedural gait) and then stands winded (opening), catches the leg if Rusana spams kicks (her leg is held, then she gets shoved back), feints (fake guard → drop → opening), taunts (speech bubble; opening), wind-up + shove (злой; striking into the wind-up is an opening).
+- **Personalities** (`TRAITS` in `js/config.js`): Дима 22 — наглый (rarely guards, feints, taunts, sometimes catches), Артём 21 — трус (guards, turns away, runs), Макс 24 — злой (shoves back), Стас 23 — качок (pain divided by 1.6, catches the leg), Лёха 21 — беглец (steps back, runs fast). Add a guy: copy an entry in `GUYS` with a free `pos` and a `trait`.
+- Scoring/victory flow unchanged: Hits = landed strikes, combo ×1.5, swell ×1.25, «Идеально» +0.5, state bonus for every state passed, floor → tap → `rus_victory`, reputation += 10 + floor(score), the beaten guy stays on the floor («повержен»). Stagger / escape movement is clamped against walls and props (smooth, no pop).
+
+### Test hooks (console, `window.__bb`)
+`__bb.strike('kick'|'knee')` (= J/K) · `__bb.goTo(i, dist?, {angle})` (Rusana in front of guy i) · `__bb.guyDo(i, 'guard'|'turn'|'step'|'flee'|'feint'|'taunt'|'windup'|'catch')` · `__bb.setPain(i, v)` · `__bb.aiOff = true` (guys stand still) · `__bb.forceGrade = 'perfect'|'clean'|'glance'|'miss'|'block'` (`forceClean` still works) · `__bb.info()` (guys, AI mode, pain, strikeable, last grade breakdown) · `__bb.manual = true; __bb.step(1/30)` (deterministic stepping) · `__bb.noRender = true` (skip rendering for fast headless logic runs) · `__bb.paused`, `__bb.onFrame`, `__bb.alwaysTalk`.
 
 ## Game flow
-Loading (progress bar) → menu (orbiting 3D gym) → gym exploration (third-person follow cam, walk/idle crossfade,
-guys Дима 22 / Артём 21 / Макс 24 with tinted shirts, «E — подойти» prompt) → fight (guy placed per CONTACT.json per strike,
-3/4 combat camera rotated 20° toward Rusana's front, low so the groin line reads) → contact: hit-stop, camera shake,
-white flash, sparks + shockwave + impact light, guy reaction timeline (flinch → stun beat → state clip) → state track
-стоит → вздрогнул → согнулся → на коленях → на полу → тап. Finishing hit is slow-mo. Victory: `rus_victory`, text, reputation,
-return to exploration; the beaten guy stays on the floor (label «повержен»).
-
-Scoring is ported 1:1 from the Phase-1 2D game (`legacy/js/game.js`) and `DESIGN_v1.md §4`: clean +1 Hit (hard/thigh 0),
-3 cleans with gaps ≤1.5 s → ×1.5, swell after 2 cleans → ×1.25, state bonus flinch1/double_over2/knees3/floor4/tap5,
-reputation += 10 + floor(score). Clean chance: kick 82 %, knee 90 %.
+Loading (progress bar) → menu (orbiting 3D gym) → gym (third-person follow cam, walk/idle crossfade, five guys with tinted shirts and «имя, возраст · характер» labels, status line, pain bar, speech bubbles) → open combat (the camera frames Rusana and the engaged guy and drifts to a 3/4 side view while she stands still; fight HUD with pain bar, state track, hits/combo/swell/score) → contact: hit-stop, camera shake, flash, sparks + shockwave + impact light, grade popup, guy reaction timeline (flinch → double_over → recover / knees / floor → tap). Finishing hit is slow-mo. Victory: `rus_victory`, text, reputation, back to the gym.
 
 ## Character assets
 `assets/models/rusana.glb`, `guy.glb` (meshopt + WebP; decoded with the vendored `MeshoptDecoder`),
 optional `CONTACT.json` (per-strike contact time, distance, crossfade, hit-stop, guy reaction sequence) and
 `anim_meta.json`, plus `manifest.json` written by the sync script.
 Missing clips fall back to idle with a console warning; guy clip names work with or without the `guy_` prefix.
-Optional clips used if present: `rus_approach`, `flinch_knee`, `stun`, `hurt`.
+Optional clips used if present: `flinch_knee`, `stun` (guard pose source), `hurt`, `clinched`.
 
 ### Sync final assets (one command)
 ```bash
