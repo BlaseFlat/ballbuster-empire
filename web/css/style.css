@@ -53,9 +53,25 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07060a;color:#f3eef
 #labels,#popups{position:fixed;inset:0;pointer-events:none;z-index:9}
 .npc-label{position:absolute;transform:translate(-50%,-100%);font-size:14px;font-weight:600;background:rgba(10,8,14,.6);padding:3px 10px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
 .npc-label.beaten{color:#ff8a98;border-color:rgba(224,36,60,.6)}
+.npc-label{text-align:center}
+.nl-trait{font-weight:400;opacity:.75;font-size:12px}
+.nl-status{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;opacity:.9;min-height:0}
+.nl-status:empty{display:none}
+.nl-status.guard{color:#7fc8ff}.nl-status.danger{color:#ff5a6e;animation:blinkTxt .25s steps(2) infinite}.nl-status.open{color:#ffd36b}
+@keyframes blinkTxt{50%{opacity:.35}}
+.nl-pain{height:4px;margin:3px 2px 1px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;display:none}
+.nl-pain i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb347,#e0243c)}
+.nl-say{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-4px);font-size:13px;font-weight:500;font-style:italic;background:rgba(255,255,255,.92);color:#1a1016;padding:3px 10px;border-radius:10px;white-space:nowrap;opacity:0;transition:opacity .2s}
+.nl-say.on{opacity:1}
+.pain-bar{width:340px;height:8px;margin:8px auto 0;border-radius:5px;background:rgba(255,255,255,.1);border:1px solid var(--line);overflow:hidden}
+.pain-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb347,#e0243c);box-shadow:0 0 10px var(--red);transition:width .15s}
+.pain-bar.series i{background:linear-gradient(90deg,#ffd36b,#ff2d4d)}
 .popup{position:absolute;transform:translate(-50%,-50%);font-family:'Russo One',sans-serif;font-size:34px;color:#fff;text-shadow:0 0 14px var(--red),0 3px 0 #700;white-space:nowrap;animation:pop .9s ease-out forwards}
 .popup.small{font-size:20px;color:var(--gold)}
 .popup.miss{color:#bbb;text-shadow:0 2px 6px #000}
+.popup.perfect{font-size:46px;color:#ffe08a;text-shadow:0 0 22px #ffb000,0 0 8px #fff,0 3px 0 #7a3b00}
+.popup.glance{font-size:28px;color:#ffc9a6;text-shadow:0 2px 8px #000}
+.popup.block{font-size:36px;color:#9fd6ff;text-shadow:0 0 12px #1f6fd6,0 2px 0 #062a55}
 @keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}30%{transform:translate(-50%,-55%) scale(1)}100%{opacity:0;transform:translate(-50%,-130%) scale(1)}}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:15;mix-blend-mode:screen}
 #vignette{position:fixed;inset:0;pointer-events:none;z-index:8;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%)}
@@ -76,3 +92,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07060a;color:#f3eef
 .snd:hover #snd-vol,.snd:focus-within #snd-vol{width:96px;opacity:.9}
 #loading.active~.snd{display:none}
 #fps{bottom:64px}
+/* open combat: fight HUD overlays the exploration HUD */
+.fight-stats{top:64px}
+body:has(#hud-fight.active) .hud-bottom-hint{display:none}
+.npc-label.eng .nl-name{display:none}
+.npc-label.eng{padding:2px 8px;min-width:70px}
+.npc-label.eng:not(:has(.nl-status:not(:empty))):not(:has(.nl-pain[style*=block])){visibility:hidden}

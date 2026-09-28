@@ -183,8 +183,12 @@ export class GameAudio {
   moan(key, { gain = 0.8, rate = 1, first = 2.5, max = 4 } = {}) { this.moaners.set(key, { next: this.now() + first, n: 0, max, gain, rate }); }
   stopMoan(key) { this.moaners.delete(key); }
 
-  impact(kind) {
+  impact(kind, { perfect = false } = {}) {
     const r = () => rnd(0.92, 1.08);
+    if (perfect) {   // «Идеально»: heavier layer on top of the normal hit
+      this.play('imp_fin_punch', { gain: 0.55, rate: 1.02 * r(), send: 0.25 });
+      this.play('imp_fin_slap', { gain: 0.35, rate: 1.05, send: 0.2 });
+    }
     if (kind === 'thigh') {
       this.play('imp_thigh', { gain: 0.8, rate: r(), send: 0.08 });
       this.play('imp_soft', { gain: 0.25, rate: 1.15 * r(), send: 0.04 });
