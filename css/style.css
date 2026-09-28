@@ -72,6 +72,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07060a;color:#f3eef
 .popup.perfect{font-size:46px;color:#ffe08a;text-shadow:0 0 22px #ffb000,0 0 8px #fff,0 3px 0 #7a3b00}
 .popup.glance{font-size:28px;color:#ffc9a6;text-shadow:0 2px 8px #000}
 .popup.block{font-size:36px;color:#9fd6ff;text-shadow:0 0 12px #1f6fd6,0 2px 0 #062a55}
+.popup.js{animation:none}
 @keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}30%{transform:translate(-50%,-55%) scale(1)}100%{opacity:0;transform:translate(-50%,-130%) scale(1)}}
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:15;mix-blend-mode:screen}
 #vignette{position:fixed;inset:0;pointer-events:none;z-index:8;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%)}

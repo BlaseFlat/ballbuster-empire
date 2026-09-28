@@ -81,7 +81,9 @@ async function loadAll() {
     tex[k] = { diff, nor, arm };
   });
   const manifest = await loadJSON('models/manifest.json');
-  const [hdr, rus, guy, contact, meta] = await Promise.all([
+  // body variants actually used by GUYS (manifest lists which ones were synced; old manifests → guy only)
+  const want = [...new Set(GUYS.map((d) => d.model || 'guy'))].filter((m) => m !== 'guy' && (!manifest || !manifest.variants || manifest.variants[m]));
+  const [hdr, rus, guy, contact, meta, ...vars] = await Promise.all([
     loadHDR('hdri/gym_01_1k.hdr', progress),
     loadGLB('models/rusana.glb', progress, 'rusana', 4),
     loadGLB('models/guy.glb', progress, 'guy', 4),
@@ -90,8 +92,10 @@ async function loadAll() {
     document.fonts ? document.fonts.load('40px "Russo One"').catch(() => 0) : 0,
     G.audio.preload(progress).catch((e) => console.warn('[bb] audio preload failed', e)),
     ...texJobs,
-  ]);
-  return { tex, hdr, rus, guy, contact, meta, manifest };
+  ].concat(want.map((m) => loadGLB(`models/${m}.glb`, progress, m, 4))));
+  const variants = { guy };
+  want.forEach((m, i) => { const g = vars[vars.length - want.length + i]; if (g) variants[m] = g; });
+  return { tex, hdr, rus, guy, variants, contact, meta, manifest };
 }
 
 function placeholderGLTF(color, h) {
@@ -234,7 +238,9 @@ async function init() {
   const guyG = A.guy || placeholderGLTF(0x445566, 1.8);
   const guardWeights = (n) => /^(clavicle|upperarm|lowerarm|hand|thumb|index|middle|ring|pinky)/.test(n) ? 1 : /^spine/.test(n) ? 0.45 : /^(neck|head)/.test(n) ? 0.3 : 0;
   for (const def of GUYS) {
-    const c = new Character(guyG, { name: def.name, clone: true, meta: A.meta, prefix: 'guy_', idle: 'guy_idle' });
+    const src = (A.variants && A.variants[def.model]) || guyG;   // body variant (same rig + clips), fallback guy
+    const c = new Character(src, { name: def.name, clone: true, meta: A.meta, prefix: 'guy_', idle: 'guy_idle' });
+    c.variant = src === guyG ? 'guy' : def.model;
     c.tint('M_shirt', def.shirt);
     c.group.position.set(...def.pos); c.yaw = def.rot; c.group.rotation.y = def.rot;
     scene.add(c.group);

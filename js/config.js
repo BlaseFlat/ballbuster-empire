@@ -64,20 +64,22 @@ export const TRAITS = {
 };
 
 // NPCs. To add one: copy an entry, give it a unique id, a free spot (pos/rot) and a trait from TRAITS.
+// model: body variant GLB (guy / guy_b / guy_c — same rig and clips; falls back to guy if missing); shirt: tint.
+export const GUY_MODELS = ['guy', 'guy_b', 'guy_c'];
 export const GUYS = [
-  { id: 'dima',  name: 'Дима',  age: 22, trait: 'cocky',  shirt: 0x2f6fd6, pos: [-3.2, 0, -1.6], rot: 0.6, voice: 1.0,
+  { id: 'dima',  name: 'Дима',  age: 22, trait: 'cocky',  model: 'guy', shirt: 0x2f6fd6, pos: [-3.2, 0, -1.6], rot: 0.6, voice: 1.0,
     taunt: 'Дима: «Ну давай, покажи, что умеешь, мелкая».',
     win: 'Дима свернулся на матах и хлопает ладонью по полу. Больше не шутит.' },
-  { id: 'artem', name: 'Артём', age: 21, trait: 'coward', shirt: 0x2fa36b, pos: [3.6, 0, 1.4], rot: -2.2, voice: 1.05,
+  { id: 'artem', name: 'Артём', age: 21, trait: 'coward', model: 'guy_b', shirt: 0x2fa36b, pos: [3.6, 0, 1.4], rot: -2.2, voice: 1.05,
     taunt: 'Артём: «Я вообще-то на тренировку пришёл…»',
     win: 'Артём стоит на коленях, прижимая руки к паху, и сдаётся.' },
-  { id: 'maks',  name: 'Макс',  age: 24, trait: 'angry',  shirt: 0x1d1d22, pos: [0.8, 0, -4.6], rot: 2.8, voice: 0.93,
+  { id: 'maks',  name: 'Макс',  age: 24, trait: 'angry',  model: 'guy_c', shirt: 0x1d1d22, pos: [0.8, 0, -4.6], rot: 2.8, voice: 0.93,
     taunt: 'Макс: «Я тут главный по залу. Иди отсюда».',
     win: 'Макс, «главный по залу», лежит пластом и тапает. Зал теперь твой.' },
-  { id: 'stas',  name: 'Стас',  age: 23, trait: 'jock',   shirt: 0xb8322a, pos: [-6.4, 0, -3.6], rot: 0.9, voice: 0.9,
+  { id: 'stas',  name: 'Стас',  age: 23, trait: 'jock',   model: 'guy_b', shirt: 0xb8322a, pos: [-6.4, 0, -3.6], rot: 0.9, voice: 0.9,
     taunt: 'Стас: «Я пресс качаю каждый день. Мне ничего не будет».',
     win: 'Стас, весь такой накачанный, скрючился на полу и тапает.' },
-  { id: 'lyokha', name: 'Лёха', age: 21, trait: 'runner', shirt: 0xd9a21e, pos: [7.2, 0, 1.8], rot: -1.8, voice: 1.08,
+  { id: 'lyokha', name: 'Лёха', age: 21, trait: 'runner', model: 'guy_c', shirt: 0xd9a21e, pos: [7.2, 0, 1.8], rot: -1.8, voice: 1.08,
     taunt: 'Лёха: «Сначала догони!»',
     win: 'Лёха больше никуда не бежит — лежит и хлопает по мату.' },
 ];
