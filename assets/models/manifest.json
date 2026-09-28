@@ -1,32 +1,47 @@
 {
-  "version": 6,
-  "synced": "2026-09-27T19:05:44.079Z",
+  "version": 8,
+  "synced": "2026-09-28T08:18:36.559Z",
   "contact": true,
   "meta": true,
   "rusana": {
-    "bytes": 1872940,
+    "bytes": 2042260,
     "clips": [
+      "rus_caught",
+      "rus_dash",
       "rus_idle",
       "rus_kick_up",
       "rus_knee",
+      "rus_run",
+      "rus_stagger",
       "rus_victory",
       "rus_walk"
     ]
   },
   "guy": {
-    "bytes": 1987716,
+    "bytes": 2422936,
     "clips": [
+      "catch_leg",
       "clinched",
       "double_over",
+      "feint",
       "flinch",
       "flinch_knee",
       "floor",
       "getup",
+      "guard",
+      "guard_enter",
+      "hip_turn",
       "hurt",
       "idle",
       "knees",
+      "run",
+      "shove",
+      "step_back",
       "stun",
-      "tap"
+      "tap",
+      "taunt",
+      "walk",
+      "winded"
     ]
   }
 }
