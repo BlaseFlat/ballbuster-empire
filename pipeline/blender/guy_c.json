@@ -1,0 +1,234 @@
+{
+ "name": "Guy",
+ "phenotype": {
+  "gender": 1.0,
+  "age": 0.5,
+  "muscle": 0.58,
+  "weight": 0.36,
+  "height": 0.55,
+  "proportions": 0.95,
+  "cupsize": 0.5,
+  "firmness": 0.5,
+  "race": {
+   "caucasian": 0.4,
+   "asian": 0.55,
+   "african": 0.05
+  }
+ },
+ "targets": {
+  "measure-waist-circ-decr": 0.3,
+  "stomach-tone-incr": 0.35,
+  "head-oval": 0.3,
+  "chin-prominent-incr": 0.2,
+  "chin-width-decr": 0.1,
+  "nose-hump-decr": 0.2,
+  "nose-scale-horiz-decr": 0.15,
+  "head-fat-decr": 0.35,
+  "head-age-decr": 0.3,
+  "eyebrows-trans-down": 0.1,
+  "l-cheek-bones-incr": 0.4,
+  "r-cheek-bones-incr": 0.4,
+  "l-cheek-volume-decr": 0.35,
+  "r-cheek-volume-decr": 0.35,
+  "l-upperarm-muscle-incr": 0.2,
+  "r-upperarm-muscle-incr": 0.2,
+  "l-upperarm-fat-decr": 0.3,
+  "r-upperarm-fat-decr": 0.3
+ },
+ "eyes": "high-poly.mhclo",
+ "eyebrows": "eyebrow008.mhclo",
+ "eyelashes": "eyelashes01.mhclo",
+ "teeth": "teeth_base.mhclo",
+ "hair": "culturalibre_hair_02.mhclo",
+ "skin": "young_asian_male.mhmat",
+ "skin_tint": [
+  0.97,
+  0.9,
+  0.82,
+  1.0
+ ],
+ "hair_tint": [
+  0.2,
+  0.18,
+  0.17
+ ],
+ "clothes": [
+  "toigo_basic_tucked_t-shirt.mhclo",
+  "punkduck_running_shoes_01.mhclo"
+ ],
+ "materials": {
+  "punkduck_running_shoes_01": {
+   "name": "M_shoes",
+   "obj": "outfit_street_shoes",
+   "tint": [
+    0.35,
+    0.35,
+    0.38
+   ],
+   "rough": 0.6,
+   "size": 1024
+  },
+  "toigo_basic_tucked": {
+   "name": "M_shirt",
+   "obj": "outfit_street_shirt",
+   "tint": [
+    0.55,
+    0.55,
+    0.57
+   ],
+   "sat": 0.0,
+   "rough": 0.85,
+   "size": 1024
+  },
+  "culturalibre_hair_02": {
+   "name": "M_hair",
+   "obj": "hair",
+   "tint": [
+    0.28,
+    0.26,
+    0.25
+   ],
+   "rough": 0.55,
+   "spec": 0.4,
+   "alpha": true,
+   "size": 1024
+  }
+ },
+ "outfit_map": {
+  "toigo_basic_tucked_t-shirt": "street_shirt",
+  "punkduck_running_shoes_01": "street_shoes"
+ },
+ "expressions": {
+  "pain": {
+   "eye-left-closure": 0.55,
+   "eye-right-closure": 0.55,
+   "eyebrows-left-inner-up": 0.9,
+   "eyebrows-right-inner-up": 0.9,
+   "mouth-open": 0.35,
+   "mouth-retraction": 0.6,
+   "nose-left-elevation": 0.5,
+   "nose-right-elevation": 0.5
+  },
+  "agony": {
+   "eye-left-closure": 0.95,
+   "eye-right-closure": 0.95,
+   "eyebrows-left-inner-up": 1.0,
+   "eyebrows-right-inner-up": 1.0,
+   "mouth-open": 0.8,
+   "mouth-retraction": 0.8,
+   "nose-left-elevation": 0.8,
+   "nose-right-elevation": 0.8,
+   "neck-platysma": 0.6
+  },
+  "shock": {
+   "eye-left-opened-up": 0.9,
+   "eye-right-opened-up": 0.9,
+   "eyebrows-left-up": 0.8,
+   "eyebrows-right-up": 0.8,
+   "mouth-open": 0.7
+  },
+  "smug": {
+   "mouth-corner-puller": 0.35,
+   "eye-left-slit": 0.2,
+   "eye-right-slit": 0.2
+  },
+  "blink": {
+   "eye-left-closure": 1.0,
+   "eye-right-closure": 1.0
+  }
+ },
+ "height_m": 1.8,
+ "mask_json": "/workspace/bb3d/out/guy_c_masks.json",
+ "out_blend": "/workspace/bb3d/out/guy_c.blend",
+ "gen_clothes": [
+  {
+   "obj": "outfit_street_pants",
+   "mat": "M_pants",
+   "waist": 0.3,
+   "hem": 2.02,
+   "slit": 0.0,
+   "slit_w": 0.5,
+   "inner_drop": 0.0,
+   "offset": 0.011,
+   "thick": 0.004,
+   "band": 0.12,
+   "cuff": 0.12,
+   "smooth": 6,
+   "min_ok": 2,
+   "color": [
+    0.03,
+    0.04,
+    0.07
+   ],
+   "band_color": [
+    0.02,
+    0.02,
+    0.03
+   ],
+   "clean_hem": 0.03,
+   "rough": 0.8,
+   "spec": 0.3
+  }
+ ],
+ "zones": {
+  "street_shirt": "top",
+  "street_pants": "bottom",
+  "street_shoes": "feet"
+ },
+ "lock_rig": "/workspace/bb3d/blender/rig_ref/guy_rig.json",
+ "skin_mat": {
+  "rough": 0.58,
+  "spec": 0.3,
+  "detail": {
+   "size": 1024,
+   "radius": 4,
+   "albedo": 6.0,
+   "pores": 0.05
+  },
+  "normal_strength": 0.6,
+  "sat": 0.9,
+  "paint": [
+   {
+    "group": "lips",
+    "mul": [
+     0.9,
+     0.75,
+     0.72
+    ],
+    "strength": 0.4,
+    "blur": 4
+   }
+  ],
+  "rough_map": {
+   "size": 512,
+   "detail": 1.5,
+   "noise": 0.05
+  }
+ },
+ "eye_mat": {
+  "tex": "brown",
+  "tint": [
+   0.72,
+   0.72,
+   0.78
+  ],
+  "rough": 0.1,
+  "spec": 0.25
+ },
+ "lash_tint": [
+  0.2,
+  0.2,
+  0.2
+ ],
+ "tuck": {
+  "top": 0.008,
+  "bottom": 0.004,
+  "feet": 0.003
+ },
+ "tuck_cover": {
+  "obj": "street_shirt",
+  "depth": 0.008,
+  "max_dist": 0.05,
+  "probe": []
+ }
+}

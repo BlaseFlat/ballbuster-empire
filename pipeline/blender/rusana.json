@@ -3,76 +3,113 @@
  "phenotype": {
   "gender": 0.0,
   "age": 0.5,
-  "muscle": 0.5,
-  "weight": 0.56,
+  "muscle": 0.62,
+  "weight": 0.5,
   "height": 0.35,
-  "proportions": 0.85,
-  "cupsize": 0.32,
-  "firmness": 0.75,
+  "proportions": 1.0,
+  "cupsize": 0.3,
+  "firmness": 0.8,
   "race": {
-   "caucasian": 0.75,
+   "caucasian": 0.65,
    "asian": 0.1,
-   "african": 0.15
+   "african": 0.25
   }
  },
  "targets": {
-  "hip-scale-horiz-incr": 0.25,
-  "buttocks-volume-incr": 0.15,
-  "l-upperleg-fat-incr": 0.3,
-  "r-upperleg-fat-incr": 0.3,
-  "l-upperleg-muscle-incr": 0.3,
-  "r-upperleg-muscle-incr": 0.3,
-  "measure-thigh-circ-incr": 0.3,
-  "measure-waist-circ-decr": 0.25,
-  "measure-shoulder-dist-decr": 0.25,
-  "torso-muscle-pectoral-decr": 0.3,
-  "stomach-tone-decr": 0.2
+  "hip-scale-horiz-incr": 0.12,
+  "buttocks-volume-incr": 0.22,
+  "measure-thigh-circ-incr": 0.2,
+  "measure-waist-circ-decr": 0.4,
+  "measure-shoulder-dist-decr": 0.2,
+  "torso-muscle-pectoral-decr": 0.25,
+  "stomach-tone-incr": 0.35,
+  "measure-neck-circ-decr": 0.25,
+  "torso-vshape-incr": 0.1,
+  "measure-calf-circ-incr": 0.1,
+  "l-upperleg-muscle-incr": 0.4,
+  "r-upperleg-muscle-incr": 0.4,
+  "l-upperleg-fat-incr": 0.12,
+  "r-upperleg-fat-incr": 0.12,
+  "l-upperarm-fat-decr": 0.3,
+  "r-upperarm-fat-decr": 0.3,
+  "l-upperarm-muscle-incr": 0.15,
+  "r-upperarm-muscle-incr": 0.15,
+  "l-lowerarm-fat-decr": 0.2,
+  "r-lowerarm-fat-decr": 0.2,
+  "head-oval": 0.6,
+  "head-fat-decr": 0.35,
+  "head-age-decr": 0.4,
+  "chin-width-decr": 0.4,
+  "chin-prominent-incr": 0.15,
+  "chin-jaw-drop-decr": 0.2,
+  "mouth-upperlip-volume-incr": 0.4,
+  "mouth-lowerlip-volume-incr": 0.3,
+  "mouth-cupidsbow-incr": 0.35,
+  "mouth-scale-horiz-decr": 0.05,
+  "nose-scale-horiz-decr": 0.2,
+  "nose-point-width-decr": 0.35,
+  "nose-hump-decr": 0.35,
+  "nose-point-up": 0.15,
+  "nose-flaring-decr": 0.25,
+  "nose-scale-vert-decr": 0.1,
+  "eyebrows-angle-up": 0.2,
+  "neck-scale-horiz-decr": 0.1,
+  "l-cheek-bones-incr": 0.4,
+  "r-cheek-bones-incr": 0.4,
+  "l-cheek-volume-decr": 0.25,
+  "r-cheek-volume-decr": 0.25,
+  "l-cheek-inner-decr": 0.2,
+  "r-cheek-inner-decr": 0.2,
+  "l-eye-scale-incr": 0.25,
+  "r-eye-scale-incr": 0.25,
+  "l-eye-corner2-up": 0.3,
+  "r-eye-corner2-up": 0.3,
+  "l-eye-bag-decr": 0.5,
+  "r-eye-bag-decr": 0.5,
+  "l-eye-height2-incr": 0.2,
+  "r-eye-height2-incr": 0.2,
+  "head-scale-vert-decr": 0.1,
+  "chin-height-decr": 0.15,
+  "chin-bones-decr": 0.3,
+  "head-scale-horiz-decr": 0.05,
+  "nose-width1-decr": 0.3,
+  "nose-width2-decr": 0.2,
+  "eyebrows-trans-backward": 0.3,
+  "forehead-nubian-decr": 0.3,
+  "forehead-temple-decr": 0.2
  },
  "eyes": "high-poly.mhclo",
- "eyebrows": "eyebrow010.mhclo",
- "eyelashes": "eyelashes02.mhclo",
+ "eyebrows": "eyebrow003.mhclo",
+ "eyelashes": "eyelashes03.mhclo",
  "teeth": "teeth_base.mhclo",
- "hair": "rehmanpolanski_hair_bun_brown.mhclo",
- "skin": "toigo_light_skin_female_bronze_with_makeup.mhmat",
+ "hair": "ponytail01.mhclo",
+ "skin": "toigo_light_skin_female_bronze.mhmat",
  "skin_tint": [
-  1.0,
-  0.9,
   0.8,
+  0.62,
+  0.5,
   1.0
  ],
  "hair_tint": [
-  0.55,
-  0.4,
-  0.3
+  0.3,
+  0.24,
+  0.2
  ],
  "clothes": [
   "punkduck_sleeveless_crop_top.mhclo",
   "punkduck_tennis_shoes.mhclo"
  ],
  "materials": {
-  "rehmanpolanski_hair_bun": {
-   "name": "M_hair",
-   "obj": "hair",
-   "tint": [
-    0.72,
-    0.5,
-    0.36
-   ],
-   "gamma": 1.05,
-   "rough": 0.45,
-   "alpha": true,
-   "size": 1024
-  },
   "punkduck_sleeveless_crop_top": {
    "name": "M_top",
    "obj": "outfit_gym_top",
    "tint": [
-    0.36,
-    0.035,
-    0.08
+    0.42,
+    0.05,
+    0.1
    ],
-   "gamma": 1.25,
-   "rough": 0.75,
+   "gamma": 1.1,
+   "rough": 0.7,
    "size": 1024,
    "sat": 0.0
   },
@@ -86,6 +123,29 @@
    ],
    "rough": 0.5,
    "size": 1024
+  },
+  "ponytail01": {
+   "name": "M_hair",
+   "obj": "hair",
+   "tint": [
+    0.42,
+    0.33,
+    0.28
+   ],
+   "gamma": 1.25,
+   "rough": 0.62,
+   "spec": 0.22,
+   "alpha": true,
+   "size": 2048,
+   "sat": 0.75,
+   "detail": {
+    "size": 1024,
+    "radius": 3,
+    "albedo": 5.0,
+    "pores": 0.0
+   },
+   "normal_strength": 0.8,
+   "alpha_blur": 6
   }
  },
  "outfit_map": {
@@ -99,12 +159,33 @@
    -0.005,
    -0.005
   ],
+  "tie_rel_head": [
+   0,
+   0.128,
+   0.05
+  ],
   "length": 0.3,
-  "lift": 0.05,
-  "back": 0.06,
-  "spread": 0.028,
-  "mess": 0.01,
-  "strands": 150
+  "lift": 0.0,
+  "back": 0.03,
+  "spread": 0.05,
+  "mess": 0.024,
+  "strands": 260,
+  "width": 1.0,
+  "tex": "hair_strands3.png",
+  "rough": 0.55,
+  "spec": 0.25,
+  "match_cap": false,
+  "cut_tail": [
+   -0.02,
+   0.08
+  ],
+  "root_narrow": 0.2,
+  "root_r": 0.2,
+  "radial_normals": true,
+  "root_sink": 0.014,
+  "radial_y": 0.9,
+  "v_top": 0.94,
+  "gather": 0.1
  },
  "expressions": {
   "cold": {
@@ -145,28 +226,142 @@
    "slit": 0.12,
    "slit_w": 0.45,
    "inner_drop": 0.0,
-   "offset": 0.005,
+   "offset": 0.007,
    "thick": 0.003,
    "band": 0.1,
-   "smooth": 4,
+   "smooth": 5,
    "color": [
-    0.018,
-    0.018,
-    0.02
+    0.012,
+    0.012,
+    0.014
    ],
    "band_color": [
-    0.05,
-    0.05,
-    0.055
+    0.03,
+    0.03,
+    0.034
    ],
    "min_ok": 3,
    "obj": "outfit_gym_shorts",
-   "mat": "M_shorts"
+   "mat": "M_shorts",
+   "clean_hem": 0.03,
+   "rough": 0.55,
+   "band_rough": 0.7,
+   "normal_strength": 0.25,
+   "extra": {},
+   "spec": 0.25
   }
  ],
  "zones": {
   "gym_top": "top",
   "gym_shorts": "bottom",
   "gym_shoes": "feet"
+ },
+ "lock_rig": "/workspace/bb3d/blender/rig_ref/rusana_rig.json",
+ "skin_mat": {
+  "rough": 0.55,
+  "spec": 0.35,
+  "detail": {
+   "size": 1024,
+   "radius": 4,
+   "albedo": 6.0,
+   "pores": 0.06
+  },
+  "normal_strength": 0.6,
+  "sat": 0.82,
+  "paint": [
+   {
+    "group": "lips",
+    "mul": [
+     0.82,
+     0.56,
+     0.56
+    ],
+    "strength": 0.65,
+    "blur": 4
+   },
+   {
+    "group": "scalp",
+    "mul": [
+     0.06,
+     0.045,
+     0.037
+    ],
+    "strength": 1.0,
+    "blur": 8
+   }
+  ],
+  "rough_map": {
+   "size": 512,
+   "detail": 2.0,
+   "noise": 0.06,
+   "pores": 0.035,
+   "mid": 0.03
+  },
+  "mottle": {
+   "amp": 0.045,
+   "scale": 48,
+   "red": 0.6
+  }
+ },
+ "eye_mat": {
+  "tex": "brown",
+  "tint": [
+   0.8,
+   0.72,
+   0.66
+  ],
+  "gamma": 1.15,
+  "rough": 0.1,
+  "spec": 0.25
+ },
+ "brow_tint": [
+  0.35,
+  0.3,
+  0.28
+ ],
+ "lash_tint": [
+  0.15,
+  0.15,
+  0.15
+ ],
+ "tuck": {
+  "top": 0.004,
+  "bottom": 0.004,
+  "feet": 0.003
+ },
+ "hair_shell": {
+  "n_main": 60,
+  "per_border": 2,
+  "fly": 0.05,
+  "layers": 3,
+  "lift": 0.0018,
+  "layer_gap": 0.0008,
+  "lift_grow": 0.0015,
+  "length": [
+   0.08,
+   0.22
+  ],
+  "width": [
+   0.008,
+   0.015
+  ],
+  "step": 0.012,
+  "overhang": 0.005,
+  "x_fac": 0.85,
+  "stop": 0.02,
+  "band": true,
+  "n_inner": 420,
+  "inner_depth": 0.015,
+  "inner_step": 2.0,
+  "band_off": 0.0,
+  "scalp_normals": true,
+  "vstart_main": [
+   0.0,
+   0.08
+  ],
+  "border_long": true,
+  "band_follow": true,
+  "band_r": 0.014,
+  "band_thick": 0.0045
  }
 }

@@ -9,9 +9,10 @@ import clips as CL, author2 as A2, metrics as MT, strikes as ST
 from poses import solve
 argv = sys.argv[sys.argv.index("--")+1:]
 mode = argv[0]; spec = json.load(open(argv[1])) if len(argv) > 1 else {}
-bpy.ops.wm.open_mainfile(filepath="/workspace/bb3d/out/rusana_anim.blend")
+import os
+bpy.ops.wm.open_mainfile(filepath=os.environ.get("BB_RUS_BLEND", "/workspace/bb3d/out/rusana_anim.blend"))
 sc = bpy.context.scene
-with bpy.data.libraries.load("/workspace/bb3d/out/guy_anim.blend", link=False) as (src, dst):
+with bpy.data.libraries.load(os.environ.get("BB_GUY_BLEND", "/workspace/bb3d/out/guy_anim.blend"), link=False) as (src, dst):
     dst.objects = [n for n in src.objects]
 for o in dst.objects:
     if o: sc.collection.objects.link(o)
