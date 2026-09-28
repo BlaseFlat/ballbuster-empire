@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 // Impact FX: spark particles, shockwave ring, impact light, screen flash, camera shake, popups.
+const POP_LIFE = 1.0;   // seconds a feedback popup stays on screen
+
 export class FX {
   constructor(scene, camera) {
     this.scene = scene; this.camera = camera;
@@ -55,18 +57,40 @@ export class FX {
     this.light.position.copy(p); this.light.intensity = 4;
   }
 
+  // v9: popups are driven by the frame clock (real time, not hit-stop) instead of a CSS animation:
+  // ~1 s life, fade out, and a new popup replaces an identical one (or any older one of the same
+  // feedback class, e.g. 'Поймал ногу!' → 'Поймал ногу — толкнул!') instead of stacking on top of it.
   popup(text, screen, cls = '') {
+    this.pops = this.pops || [];
+    const k = cls.trim();
+    for (const p of this.pops) if (p.text === text || (k && k === p.cls && k !== 'small')) p.t = Math.max(p.t, POP_LIFE);   // retire now
+    this.pops = this.pops.filter((p) => { if (p.t >= POP_LIFE) { p.el.remove(); return false; } return true; });
+    while (this.pops.length >= 4) this.pops.shift().el.remove();
     const el = document.createElement('div');
-    el.className = 'popup ' + cls; el.textContent = text;
+    el.className = 'popup js ' + cls; el.textContent = text;
     el.style.left = screen.x + 'px'; el.style.top = screen.y + 'px';
     this.popEl.appendChild(el);
-    // removed when its CSS animation ends (works with the frame-stepped demo capture too); fallback for safety
-    el.addEventListener('animationend', () => el.remove(), { once: true });
-    const kill = () => { if (!el.isConnected) return; if (window.__bb && window.__bb.manual) setTimeout(kill, 1500); else el.remove(); };
-    setTimeout(kill, 2500);
+    const p = { el, text, cls: k, t: 0 };
+    this.pops.push(p); this.stylePop(p);
+  }
+
+  stylePop(p) {
+    const t = p.t, u = t / POP_LIFE;
+    const sc = t < 0.12 ? 0.6 + (1.15 - 0.6) * (t / 0.12) : t < 0.25 ? 1.15 - 0.15 * ((t - 0.12) / 0.13) : 1;
+    const op = t < 0.12 ? t / 0.12 : u < 0.55 ? 1 : Math.max(0, 1 - (u - 0.55) / 0.45);
+    const y = -50 - 55 * Math.max(0, (t - 0.12) / (POP_LIFE - 0.12));
+    p.el.style.opacity = op.toFixed(3);
+    p.el.style.transform = `translate(-50%,${y.toFixed(1)}%) scale(${sc.toFixed(3)})`;
+  }
+
+  updatePops(realDt) {
+    if (!this.pops || !this.pops.length) return;
+    const dt = Math.min(realDt || 0, 0.1);
+    this.pops = this.pops.filter((p) => { p.t += dt; if (p.t >= POP_LIFE) { p.el.remove(); return false; } this.stylePop(p); return true; });
   }
 
   update(dt, realDt) {
+    this.updatePops(realDt === undefined ? dt : realDt);
     const N = this.N;
     for (let i = 0; i < N; i++) {
       if (this.life[i] <= 0) continue;

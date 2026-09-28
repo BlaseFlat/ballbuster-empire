@@ -81,7 +81,9 @@ async function loadAll() {
     tex[k] = { diff, nor, arm };
   });
   const manifest = await loadJSON('models/manifest.json');
-  const [hdr, rus, guy, contact, meta] = await Promise.all([
+  // body variants actually used by GUYS (manifest lists which ones were synced; old manifests → guy only)
+  const want = [...new Set(GUYS.map((d) => d.model || 'guy'))].filter((m) => m !== 'guy' && (!manifest || !manifest.variants || manifest.variants[m]));
+  const [hdr, rus, guy, contact, meta, ...vars] = await Promise.all([
     loadHDR('hdri/gym_01_1k.hdr', progress),
     loadGLB('models/rusana.glb', progress, 'rusana', 4),
     loadGLB('models/guy.glb', progress, 'guy', 4),
@@ -90,8 +92,10 @@ async function loadAll() {
     document.fonts ? document.fonts.load('40px "Russo One"').catch(() => 0) : 0,
     G.audio.preload(progress).catch((e) => console.warn('[bb] audio preload failed', e)),
     ...texJobs,
-  ]);
-  return { tex, hdr, rus, guy, contact, meta, manifest };
+  ].concat(want.map((m) => loadGLB(`models/${m}.glb`, progress, m, 4))));
+  const variants = { guy };
+  want.forEach((m, i) => { const g = vars[vars.length - want.length + i]; if (g) variants[m] = g; });
+  return { tex, hdr, rus, guy, variants, contact, meta, manifest };
 }
 
 function placeholderGLTF(color, h) {
@@ -227,13 +231,16 @@ async function init() {
   scene.add(rus.group);
   rus.play('rus_idle', { fade: 0 });
   rus.setExpr({ cold: 0.6 });
+  rus.onLeave = (prev) => bakeRoot(rus, prev);
   G.rus = rus;
   const bb = new THREE.Box3().setFromObject(rus.group); log('Rusana bbox', bb.min.toArray().map((v) => v.toFixed(2)), bb.max.toArray().map((v) => v.toFixed(2)));
 
   const guyG = A.guy || placeholderGLTF(0x445566, 1.8);
   const guardWeights = (n) => /^(clavicle|upperarm|lowerarm|hand|thumb|index|middle|ring|pinky)/.test(n) ? 1 : /^spine/.test(n) ? 0.45 : /^(neck|head)/.test(n) ? 0.3 : 0;
   for (const def of GUYS) {
-    const c = new Character(guyG, { name: def.name, clone: true, meta: A.meta, prefix: 'guy_', idle: 'guy_idle' });
+    const src = (A.variants && A.variants[def.model]) || guyG;   // body variant (same rig + clips), fallback guy
+    const c = new Character(src, { name: def.name, clone: true, meta: A.meta, prefix: 'guy_', idle: 'guy_idle' });
+    c.variant = src === guyG ? 'guy' : def.model;
     c.tint('M_shirt', def.shirt);
     c.group.position.set(...def.pos); c.yaw = def.rot; c.group.rotation.y = def.rot;
     scene.add(c.group);
@@ -244,7 +251,9 @@ async function init() {
     c.trait = TRAITS[def.trait] || TRAITS.cocky;
     c.home = new THREE.Vector3(...def.pos);
     // guard = hands over the groin, sampled from the 'stun' clip and layered over idle / hurt
-    c.defineLayer('guard', c.samplePose(c.has('stun') ? 'stun' : 'guy_hurt', 0.2, guardWeights), 7);
+    // (v3: with the baked 'guard' clip the layer only carries the block weight — the pose comes from the clip)
+    c.defineLayer('guard', c.has('guard') ? [] : c.samplePose(c.has('stun') ? 'stun' : 'guy_hurt', 0.2, guardWeights), 7);
+    c.onLeave = (prev) => bakeRoot(c, prev);
     c.pain = new Pain(c.trait.tough);
     c.bout = null;
     c.brain = new Brain(c, world);
@@ -335,6 +344,8 @@ const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vect
 const flatDist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const wrapA = (a) => ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
 const STANDING_CLIPS = new Set(['idle', 'hurt', 'stun']);
+// v3 AI action clips: he is still standing on his own (AI may act, strikes connect)
+for (const c of ['guard_enter', 'guard', 'hip_turn', 'step_back', 'run', 'walk', 'winded', 'catch_leg', 'shove', 'taunt', 'feint']) STANDING_CLIPS.add(c);
 const clipBase = (ch) => String(ch.currentName).replace(/^guy_/, '');
 
 // guy is standing on his own (AI may act)
@@ -360,7 +371,7 @@ function effDist(g) {
 // angle (deg) between his facing and the direction to Rusana (0 = she is in front of him)
 function facingAngle(g) {
   const p = g.group.position, r = G.rus.group.position;
-  return Math.abs(THREE.MathUtils.radToDeg(wrapA(Math.atan2(r.x - p.x, r.z - p.z) - g.yaw)));
+  return Math.abs(THREE.MathUtils.radToDeg(wrapA(Math.atan2(r.x - p.x, r.z - p.z) - g.yaw))) + (g.brain ? g.brain.hipAngle() : 0);
 }
 function guyCircles(except) {
   return G.guys.filter((g) => g !== except).map((g) => ({ x: g.group.position.x, z: g.group.position.z, r: g.beaten ? 0.55 : 0.32 }));
@@ -428,7 +439,7 @@ function updateExplore(dt, realDt) {
     // safety net: a clinch that was never resolved (strike cancelled) returns to standing
     if (clipBase(g) === 'clinched' && g.finished && !g.timeline.length && !(G.act && G.act.target === g)) g.play('guy_idle', { fade: 0.3 });
     if (!G.aiOff) g.brain.update(dt, G.gt);
-    else if (guyFree(g)) { g.brain.speed = 0; g.brain.applyPose(dt); }
+    else if (guyFree(g)) { g.brain.speed = 0; g.brain.driveClips(); g.brain.applyPose(dt); }
     const down = g.state === 'knees' || g.state === 'floor' || g.state === 'tap' || !guyFree(g);
     g.pain.update(dt, G.gt, down);
     if (g.afterHit && guyFree(g) && G.gt >= g.afterHit.at) { g.brain.afterHit(g.afterHit.grade, g.pain.frac); g.afterHit = null; }
@@ -493,9 +504,11 @@ function tryStrike(move, fromBuffer) {
   const err = effDist(target) - ci.dist;
   const spam = G.presses.length >= 3;
   if (err > COMBAT.lungeMax) {
-    G.act = { type: 'dash', target, move, t: 0, from: G.rus.group.position.clone(), spam };
+    const dm = G.rus.has('rus_dash') && G.rus.clipMeta('rus_dash');
+    G.act = { type: 'dash', target, move, t: 0, from: G.rus.group.position.clone(), spam, travel: dm && Array.isArray(dm.travel) ? dm.travel : null, s: 0 };
     target.brain.onStrike(move, ci.time + (err - COMBAT.dashStop) / COMBAT.dashSpeed, { spam });
-    const w = G.rus.play('rus_walk', { fade: 0.1, loop: true }); if (w) w.timeScale = 2.5;
+    if (G.act.travel) G.rus.play('rus_dash', { fade: 0.08, loop: false });     // v3: baked explosive start (feet planted: engine follows meta.travel)
+    else { const w = G.rus.play('rus_walk', { fade: 0.1, loop: true }); if (w) w.timeScale = 2.5; }
     return;
   }
   startStrike(move, target, { spam, bent: s === 'bent' });
@@ -518,7 +531,16 @@ function updateAct(dt) {
       startStrike(s === 'bent' ? 'knee' : a.move, g, { spam: a.spam, dashLen: flatDist(a.from, rp), bent: s === 'bent' });
       return;
     }
-    const step = Math.min(left, COMBAT.dashSpeed * dt);
+    let step = Math.min(left, COMBAT.dashSpeed * dt);
+    if (a.travel) {   // follow the clip's travel curve, then keep sprinting with rus_run at dash speed
+      const tr = a.travel, f = a.t * 30, n = tr.length - 1;
+      const s = f <= n ? tr[Math.floor(f)] + (tr[Math.min(n, Math.floor(f) + 1)] - tr[Math.floor(f)]) * (f - Math.floor(f)) : tr[n] + COMBAT.dashSpeed * (a.t - n / 30);
+      step = Math.min(left, Math.max(0, s - a.s)); a.s = s;
+      if (rus.finished && /dash/.test(rus.currentName || '') && rus.has('rus_run')) {
+        const rm = rus.clipMeta('rus_run'); const w = rus.play('rus_run', { fade: 0.1, loop: true });
+        if (w) w.timeScale = COMBAT.dashSpeed / ((rm && rm.speed) || COMBAT.dashSpeed);
+      }
+    }
     rp.x += dx / d * step; rp.z += dz / d * step;
     collide(rp, 0.28, G.gym, guyCircles(g));
     return;
@@ -533,10 +555,22 @@ function updateAct(dt) {
     if (!a.contactDone && t >= a.ci.time) onContact(a);
     if (a.caught) {
       a.caughtT += dt;
-      if (a.caughtT > 0.55) { const g = a.target; g.caughtLeg = false; g.setLayer('guard', 0, 5); rus.current && (rus.current.timeScale = 1); startStagger(g, 0.55, 'Поймал ногу — толкнул!'); }
+      const g = a.target;
+      if (a.snap) {   // v3: glide him onto the exact kick placement so his hands sit on her held ankle (rus_caught ↔ catch_leg)
+        const k = Math.min(1, a.caughtT / 0.12), e = 1 - Math.pow(1 - k, 2);
+        const ry = rus.yaw, d = a.snap.dist;
+        const tx = rus.group.position.x + Math.sin(ry) * d, tz = rus.group.position.z + Math.cos(ry) * d;
+        g.group.position.x = THREE.MathUtils.lerp(a.snap.from.x, tx, e); g.group.position.z = THREE.MathUtils.lerp(a.snap.from.z, tz, e);
+        g.yaw = a.snap.yaw + wrapA(ry + Math.PI - a.snap.yaw) * e; g.group.rotation.y = g.yaw;
+      }
+      if (a.caughtT > 0.55) { g.caughtLeg = false; g.setLayer('guard', 0, 5); rus.current && (rus.current.timeScale = 1); startStagger(g, 0.55, 'Поймал ногу — толкнул!'); }
       return;
     }
     if (rus.finished) { G.act = null; rus.play('rus_idle', { fade: 0.3 }); }
+    return;
+  }
+  if (a.type === 'stagger' && a.clip) {
+    if (a.t >= a.dur) { G.act = null; rus.play('rus_idle', { fade: 0.25 }); }   // onLeave bakes the 0.5 m root motion
     return;
   }
   if (a.type === 'stagger') {
@@ -595,8 +629,14 @@ function timingFor(g, a) {
 function startStagger(by, dist, text) {
   const rus = G.rus, rp = rus.group.position, gp = by.group.position;
   const v = new THREE.Vector3(rp.x - gp.x, 0, rp.z - gp.z); if (v.lengthSq() < 1e-6) v.set(-Math.sin(rus.yaw), 0, -Math.cos(rus.yaw)); v.normalize().multiplyScalar(dist);
-  G.act = { type: 'stagger', t: 0, dur: 0.75, from: rp.clone(), vec: v };
-  rus.play('rus_idle', { fade: 0.18 });
+  if (rus.has('rus_stagger')) {   // v3: baked stumble (root motion 0.5 m, baked into her position when it ends)
+    rus.yaw = Math.atan2(gp.x - rp.x, gp.z - rp.z); rus.group.rotation.y = rus.yaw;   // pushed from the front
+    G.act = { type: 'stagger', t: 0, dur: rus.clipDuration('rus_stagger'), clip: true };
+    rus.play('rus_stagger', { fade: 0.1, loop: false });
+  } else {
+    G.act = { type: 'stagger', t: 0, dur: 0.75, from: rp.clone(), vec: v };
+    rus.play('rus_idle', { fade: 0.18 });
+  }
   G.buffer = null;
   const scr = toScreen(_v1.set(rp.x, 1.5, rp.z));
   G.fx.popup(text, { x: scr.x, y: scr.y - 20 }, 'block');
@@ -668,8 +708,27 @@ function bakeStagger(ch) {
   collide(p, 0.3, G.gym, guyCircles(ch).concat([{ x: G.rus.group.position.x, z: G.rus.group.position.z, r: 0.2 }]));
   const off = p0.sub(p);                                       // world offset that keeps the visual in place
   off.applyAxisAngle(_Y, -ch.yaw);                             // → local
-  ch.stagger = { action: a, off };
-  ch.model.position.copy(off);
+  ch.addGlue(a, off);
+}
+
+// Root motion of the v3 action clips (guy step_back / shove, rus_stagger): the clip moves the pelvis (feet planted);
+// when it ends — or is interrupted — the displacement reached so far (anim_meta root_track, armature metres,
+// +y = back) moves the object, clamped against walls/props, and a glue offset keeps the pose from popping while
+// the clip fades out. Wired as Character.onLeave, so every path (AI, hit reactions, walking) bakes exactly once.
+function bakeRoot(ch, action) {
+  const clip = action.getClip(), m = ch.clipMeta(clip.name);
+  if (!m || !Array.isArray(m.root_track) || !m.root_track.length) return;
+  const tr = m.root_track, f = THREE.MathUtils.clamp(action.time * 30, 0, tr.length - 1), i = Math.floor(f), k = f - i;
+  const a0 = tr[i], a1 = tr[Math.min(i + 1, tr.length - 1)];
+  const lx = a0[0] + (a1[0] - a0[0]) * k, ly = a0[1] + (a1[1] - a0[1]) * k;
+  if (Math.hypot(lx, ly) < 1e-4) return;
+  const local = _v4.set(lx, 0, -ly);                           // Blender armature (x, +y back) → model local (x, -z)
+  const p = ch.group.position, p0 = p.clone();
+  p.add(local.clone().applyAxisAngle(_Y, ch.yaw));
+  const others = ch === G.rus ? guyCircles(null) : guyCircles(ch).concat([{ x: G.rus.group.position.x, z: G.rus.group.position.z, r: 0.2 }]);
+  collide(p, ch === G.rus ? 0.28 : 0.3, G.gym, others);
+  const off = p0.sub(p).applyAxisAngle(_Y, -ch.yaw);
+  ch.addGlue(action, off);
 }
 const _Y = new THREE.Vector3(0, 1, 0);
 
@@ -748,7 +807,13 @@ function onContact(a) {
   } else if (grade === 'caught') {
     UI.text('#f-log', `${g.def.name} поймал ногу! Не спамь удары.`);
     a.caught = true; a.caughtT = 0; g.caughtLeg = true;
-    G.rus.current && (G.rus.current.timeScale = 0);             // her leg is held at the contact pose
+    if (G.rus.has('rus_caught') && g.has('catch_leg')) {        // v3: he grabs the leg (catch_leg ready → grab), she balances on one foot
+      const gm = g.clipMeta('catch_leg'), cd = gm && gm.catch && gm.catch.dist_m;
+      const ga = g.isPlaying('catch_leg') ? g.current : g.play('catch_leg', { fade: 0.06, loop: false });
+      if (ga) ga.timeScale = 1;
+      G.rus.play('rus_caught', { fade: 0.1, loop: true });
+      a.snap = { from: g.group.position.clone(), yaw: g.yaw, dist: cd || ci.dist };
+    } else G.rus.current && (G.rus.current.timeScale = 0);     // fallback: her leg is held at the contact pose
     G.audio.impact('thigh');
     g.afterHit = { grade, at: now + 0.9 };
   } else {
@@ -983,11 +1048,7 @@ function frame(fixedDt) {
         if ((looping || ch.finished) && since >= (q.hold || 0)) { ch.queue.shift(); ch.play(q.name, { fade: q.fade, loop: q.loop, timeScale: q.ts || 1 }); if (q.onStart) q.onStart(); }
       }
     }
-    if (ch.stagger) {   // keep the baked double_over offset glued to the action weight
-      const w = ch.stagger.action.enabled ? ch.stagger.action.getEffectiveWeight() : 0;
-      ch.model.position.copy(ch.stagger.off).multiplyScalar(w);
-      if (w <= 1e-3) { ch.stagger = null; ch.model.position.set(0, 0, 0); }
-    }
+    ch.applyGlues();    // baked root-motion offsets (double_over stagger, step_back / shove / rus_stagger) follow the action weights
     if (ch.blob) {
       const pv = ch.bones.pelvis ? ch.boneWorld('pelvis', _v1) : ch.group.position;
       const lying = ch.state === 'floor' || ch.state === 'tap' || ch.beaten;
@@ -1048,7 +1109,7 @@ Object.assign(G, {
     else if (mode === 'taunt') { b.setMode('taunt', 1.0); b.open(1.0, 'taunt'); b.say(b.line(), 1); }
     else if (mode === 'catch') { b.setMode('catch', 1.5); b.catching = true; g.setLayer('guard', 0.8, 9); }
     else if (mode === 'guard') { b.setMode('guard', 2.0); g.setLayer('guard', 1, 7); }
-    else if (mode === 'turn') { b.setMode('turn', 1.5); b.turnWant = 1.0; }
+    else if (mode === 'turn') { b.setMode('turn', 1.5); b.turnWant = b.turnYaw(1.0); }
     else b.setMode(mode, 1);
   },
   setPain(i, v) { const g = G.guy(i); g.pain.value = v; g.pain.lastHit = G.gt; },

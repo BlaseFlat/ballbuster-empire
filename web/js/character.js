@@ -53,6 +53,8 @@ export class Character {
     this.touched = new Set();
     this.layers = {};     // name → { pose: [{bone, q, k}], w, target, speed }
     this.adds = [];       // one-frame additive rotations [{bone, axis (character space), angle}]
+    this.glues = [];      // baked root motion: [{action, off (model-local)}], model offset = Σ off · action weight (see main.js bakeRoot)
+    this.onLeave = null;  // (prevAction) => void, called before a different clip takes over (root-motion bake hook)
     if (!this.clips.length) console.warn(`[bb] ${name}: GLB has no animation clips — static pose`);
   }
 
@@ -70,6 +72,27 @@ export class Character {
   has(name) { return !!this.findClip(name); }
 
   clipDuration(name) { const c = this.findClip(name); return c ? c.duration : 0; }
+
+  // anim_meta.json entry for a clip (extra fields of the v3 action clips: speed, root_track, travel, catch …)
+  clipMeta(name) {
+    const mc = this.meta && this.meta.clips; if (!mc || !name) return null;
+    const base = String(name).replace(/^(guy|rus)_/, '');
+    return mc[name] || mc[this.prefix + base] || mc[base] || null;
+  }
+  isPlaying(name) { const c = this.findClip(name); return !!c && this.currentName === c.name; }
+
+  addGlue(action, off) { this.glues.push({ action, off: off.clone() }); this.applyGlues(); }
+  applyGlues() {
+    if (!this.glues.length) return;
+    this.model.position.set(0, 0, 0);
+    this.glues = this.glues.filter((g) => {
+      const w = g.action.enabled ? g.action.getEffectiveWeight() : 0;
+      if (w <= 1e-3) return false;
+      this.model.position.addScaledVector(g.off, w);
+      return true;
+    });
+    if (!this.glues.length) this.model.position.set(0, 0, 0);
+  }
 
   getAction(clip) {
     let a = this.actions.get(clip.name);
@@ -89,7 +112,9 @@ export class Character {
     const a = this.getAction(clip);
     if (this.current === a && !restart) { a.timeScale = timeScale; return a; }
     const prev = this.current;
-    if (this.stagger && this.stagger.action === a) { this.stagger = null; this.model.position.z = 0; }  // replaying double_over
+    if (prev && prev !== a && this.onLeave) this.onLeave(prev);
+    // replaying a clip whose root motion was already baked: its offset is in the object position now → drop the glue
+    if (this.glues.some((g) => g.action === a)) { this.glues = this.glues.filter((g) => g.action !== a); this.applyGlues(); if (!this.glues.length) this.model.position.set(0, 0, 0); }
     this.playT = 0;
     a.reset();
     a.enabled = true;
@@ -138,6 +163,7 @@ export class Character {
     this.playT = (this.playT || 0) + dt;
     for (const b of this.touched) b.quaternion.copy(this.rest.get(b));   // un-do last frame's overlays
     this.mixer.update(dt);
+    this.applyGlues();
     this.applyOverlays(realDt);
     this.updateExpr(dt);
   }

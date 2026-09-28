@@ -1,32 +1,103 @@
 {
-  "version": 6,
-  "synced": "2026-09-27T19:05:44.079Z",
+  "version": 9,
+  "synced": "2026-09-28T09:19:02.063Z",
   "contact": true,
   "meta": true,
   "rusana": {
-    "bytes": 1872940,
+    "bytes": 2415296,
     "clips": [
+      "rus_caught",
+      "rus_dash",
       "rus_idle",
       "rus_kick_up",
       "rus_knee",
+      "rus_run",
+      "rus_stagger",
       "rus_victory",
       "rus_walk"
     ]
   },
   "guy": {
-    "bytes": 1987716,
+    "bytes": 2575512,
     "clips": [
+      "catch_leg",
       "clinched",
       "double_over",
+      "feint",
       "flinch",
       "flinch_knee",
       "floor",
       "getup",
+      "guard",
+      "guard_enter",
+      "hip_turn",
       "hurt",
       "idle",
       "knees",
+      "run",
+      "shove",
+      "step_back",
       "stun",
-      "tap"
+      "tap",
+      "taunt",
+      "walk",
+      "winded"
     ]
+  },
+  "variants": {
+    "guy_b": {
+      "bytes": 2670892,
+      "clips": [
+        "catch_leg",
+        "clinched",
+        "double_over",
+        "feint",
+        "flinch",
+        "flinch_knee",
+        "floor",
+        "getup",
+        "guard",
+        "guard_enter",
+        "hip_turn",
+        "hurt",
+        "idle",
+        "knees",
+        "run",
+        "shove",
+        "step_back",
+        "stun",
+        "tap",
+        "taunt",
+        "walk",
+        "winded"
+      ]
+    },
+    "guy_c": {
+      "bytes": 2696816,
+      "clips": [
+        "catch_leg",
+        "clinched",
+        "double_over",
+        "feint",
+        "flinch",
+        "flinch_knee",
+        "floor",
+        "getup",
+        "guard",
+        "guard_enter",
+        "hip_turn",
+        "hurt",
+        "idle",
+        "knees",
+        "run",
+        "shove",
+        "step_back",
+        "stun",
+        "tap",
+        "taunt",
+        "walk",
+        "winded"
+      ]
+    }
   }
 }

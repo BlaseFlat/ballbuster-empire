@@ -8,6 +8,8 @@
 //   taunt  — says a line, smug = opening
 //   shove  — (злой) wind-up (opening!) then shoves Rusana back
 // The brain only acts while the guy is standing and not in a hit reaction; main.js owns reactions.
+// v3: every behaviour plays a baked clip when the GLB has it (guard_enter/guard, hip_turn, step_back, run, walk,
+// winded, catch_leg, shove, taunt, feint); the old procedural bone overrides remain as the fallback per clip.
 import * as THREE from 'three';
 import { TRAITS, COMBAT } from '@bb/config';
 
@@ -19,6 +21,16 @@ const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1);
 
 export const MODE_RU = { guard: 'закрылся', turn: 'отвернулся', step: 'отскок', flee: 'убегает', winded: 'выдохся', feint: 'финт',
   taunt: 'дразнит', windup: 'замахивается!', shove: 'толкает!', catch: 'ловит ногу', home: '' };
+
+// behaviour → clip (guy GLB names without the guy_ prefix)
+const CLIP = { guard: 'guard_enter', catch: 'catch_leg', turn: 'hip_turn', step: 'step_back', flee: 'run', home: 'walk',
+  winded: 'winded', feint: 'feint', taunt: 'taunt', windup: 'shove' };
+const LOOPS = new Set(['guard', 'run', 'walk', 'winded']);
+// one-shots that finish even after the behaviour ended (root motion / the push / the gag must not be cut)
+const COMMITTED = new Set(['step_back', 'shove', 'catch_leg', 'taunt', 'feint']);
+const BASE = new Set(['idle', 'hurt', 'stun']);
+const CLIP_SET = new Set([...Object.values(CLIP), 'guard']);
+const bare = (n) => String(n || '').replace(/^guy_/, '');
 
 export class Brain {
   constructor(guy, world) {
@@ -35,6 +47,52 @@ export class Brain {
     this.pose = { shove: 0, windup: 0 };   // procedural arm poses 0..1
     this.react = null;                   // pending reaction to an incoming strike
     this.lastSay = -99;
+    this.base = 'guy_idle';              // standing clip to return to (idle / hurt)
+  }
+
+  // ---- v3 clips ----
+  hasClip(name) { return this.g.has(name); }
+  usesClip(mode) { const c = CLIP[mode]; return !!(c && this.g.has(c)); }
+  playing() { return bare(this.g.currentName); }
+  // visual hip-turn angle (deg) added to the strike angle while the hip_turn clip holds (his pelvis is turned ~36°)
+  hipAngle() {
+    const g = this.g; if (this.playing() !== 'hip_turn' || !g.current) return 0;
+    return 30 * Math.min(1, g.current.time / 0.2) * g.current.getEffectiveWeight();
+  }
+  // body yaw offset for 'turn': the hip_turn clip turns his pelvis to HIS right (−yaw) by ~36°, so the body only adds
+  // ~0.55 rad the same way (total ≈ the old procedural 0.8–1.1 rad); without the clip: random side, full offset
+  turnYaw(mag) { return this.usesClip('turn') ? -mag * 0.6 : (Math.random() < 0.5 ? -1 : 1) * mag; }
+  startClip(mode) {
+    const g = this.g, c = CLIP[mode];
+    if (!c || !g.has(c) || !this.w.free(g)) return null;
+    const cur = this.playing();
+    if (mode === 'guard' && (cur === 'guard' || cur === 'guard_enter')) return g.current;
+    if (mode === 'shove' && cur === 'shove') return g.current;   // wind-up already started the shove clip
+    const fades = { guard: 0.1, catch: 0.12, turn: 0.15, step: 0.08, flee: 0.2, home: 0.25, winded: 0.3, feint: 0.1, taunt: 0.15, windup: 0.12 };
+    const a = g.play(c, { fade: fades[mode] ?? 0.15, loop: LOOPS.has(c) });
+    if (a && mode === 'catch') a.timeScale = 0;       // hold the ready pose until her kick lands (main.js resumes → grab)
+    return a;
+  }
+  // keep the clip in step with the behaviour every frame (only while he is free)
+  driveClips() {
+    const g = this.g, cur = this.playing();
+    if (BASE.has(cur)) this.base = g.currentName;
+    const want = CLIP[this.mode];
+    if (this.mode === 'guard' && cur === 'guard_enter' && g.finished && g.has('guard')) { g.play('guard', { fade: 0.12, loop: true }); return; }
+    if ((this.mode === 'flee' || this.mode === 'home') && (cur === 'run' || cur === 'walk') && g.current) {
+      const m = g.clipMeta(cur); g.current.timeScale = THREE.MathUtils.clamp(this.speed / ((m && m.speed) || 1.5), 0.45, 1.6);   // feet stay planted
+    }
+    if (this.mode === 'shove' && cur === 'shove') return;
+    if (want && g.has(want)) {
+      const ok = cur === want || (this.mode === 'guard' && cur === 'guard');
+      if (!ok) this.startClip(this.mode);
+      return;
+    }
+    // idle / no clip for this behaviour → back to the standing clip (let committed one-shots finish first)
+    if (!BASE.has(cur) && (CLIP_SET.has(cur))) {
+      if (COMMITTED.has(cur) && !g.finished && g.current && g.current.timeScale > 0) return;
+      g.play(this.base || 'guy_idle', { fade: 0.3, loop: true });
+    }
   }
 
   get guard() { return this.g.layerW('guard'); }
@@ -52,6 +110,8 @@ export class Brain {
   setMode(m, dur = 0) {
     this.mode = m; this.t = 0; this.dur = dur;
     const g = this.g;
+    if (m === 'step' && this.usesClip('step')) this.dur = Math.max(dur, g.clipDuration('step_back') - 0.05);
+    if (CLIP[m]) this.startClip(m);
     if (m !== 'guard' && m !== 'catch' && m !== 'feint') g.setLayer('guard', 0, 5);
     if (m !== 'turn') this.turnWant = 0;
     if (m !== 'catch') this.catching = false;
@@ -122,7 +182,7 @@ export class Brain {
       if (r === 'catch') { this.setMode('catch', 0.7); this.catching = true; g.setLayer('guard', 0.8, 9); }
       else if (r === 'guard') { this.setMode('guard', rnd(0.7, 1.1)); g.setLayer('guard', 1, 5.5); }
       else if (r === 'step') { this.setMode('step', 0.32); this.stepDir = faceYaw + Math.PI; }
-      else if (r === 'turn') { this.setMode('turn', 0.9); this.turnWant = (Math.random() < 0.5 ? -1 : 1) * 0.95; }
+      else if (r === 'turn') { this.setMode('turn', 0.9); this.turnWant = this.turnYaw(0.95); }
     }
 
     this.t += dt;
@@ -130,7 +190,7 @@ export class Brain {
       case 'guard': if (this.t > this.dur) this.setMode('idle'); break;
       case 'catch': if (this.t > this.dur) this.setMode('idle'); break;
       case 'turn': if (this.t > this.dur) this.setMode('idle'); break;
-      case 'step': move = 1.3 * (1 - this.t / this.dur) + 0.2; moveDir = this.stepDir; if (this.t > this.dur) this.setMode('idle'); break;
+      case 'step': if (!this.usesClip('step')) { move = 1.3 * (1 - this.t / this.dur) + 0.2; moveDir = this.stepDir; } if (this.t > this.dur) this.setMode('idle'); break;
       case 'feint':
         if (this.t < 0.4) g.setLayer('guard', 1, 10);
         else if (this.t < 0.5) { g.setLayer('guard', 0, 7); }
@@ -146,7 +206,7 @@ export class Brain {
         const k = this.t / this.dur;
         this.pose.windup = Math.max(0, 1 - this.t / 0.1);
         this.pose.shove = k < 0.35 ? k / 0.35 : Math.max(0, 1 - (k - 0.35) / 0.65);
-        if (k < 0.4) { move = 1.2; moveDir = faceYaw; }
+        if (k < 0.4 && !this.usesClip('windup')) { move = 1.2; moveDir = faceYaw; }   // clip: the lunge step is baked root motion
         if (!this.shoved && k > 0.3) { this.shoved = true; if (d < 1.15) w.shoveRus(g); }
         if (this.t > this.dur) { this.pose.shove = 0; this.setMode('idle'); }
         break;
@@ -171,6 +231,7 @@ export class Brain {
       }
     }
 
+    this.driveClips();
     // facing
     if (this.mode === 'turn') this.turnOff = angDamp(this.turnOff, this.turnWant, 7, dt);
     else this.turnOff = angDamp(this.turnOff, 0, 5, dt);
@@ -206,7 +267,7 @@ export class Brain {
     this.next = rnd(0.6, 1.4);
     switch (c) {
       case 'guard': this.setMode('guard', rnd(0.8, 1.6)); this.g.setLayer('guard', 1, 7); break;
-      case 'turn': this.setMode('turn', rnd(0.8, 1.3)); this.turnWant = (Math.random() < 0.5 ? -1 : 1) * rnd(0.8, 1.1); break;
+      case 'turn': this.setMode('turn', rnd(0.8, 1.3)); this.turnWant = this.turnYaw(rnd(0.8, 1.1)); break;
       case 'feint': this.setMode('feint'); break;
       case 'taunt': this.setMode('taunt', 1.0); this.open(1.0, 'taunt'); this.say(this.line(), 1); break;
       case 'shove': this.setMode('windup', 0.5); this.open(0.5, 'windup'); break;
@@ -218,8 +279,9 @@ export class Brain {
 
   // procedural gait (legs/arms swing while he moves) + shove / wind-up arm poses
   applyPose(dt) {
-    const g = this.g, s = this.speed;
-    const amp = Math.min(0.6, 0.34 * s);
+    const g = this.g, s = this.speed, cur = this.playing();
+    const clipGait = cur === 'run' || cur === 'walk';
+    const amp = clipGait ? 0 : Math.min(0.6, 0.34 * s);     // procedural gait only as fallback (no run/walk clip)
     this.gaitAmp += (amp - this.gaitAmp) * (1 - Math.exp(-8 * dt));
     const A = this.gaitAmp;
     if (A > 0.01) {
@@ -233,7 +295,7 @@ export class Brain {
       g.addRot('upperarm_l', X, sn * A * 0.7); g.addRot('upperarm_r', X, -sn * A * 0.7);
     }
     const wu = this.pose.windup, sh = this.pose.shove;
-    if (wu > 0.01 || sh > 0.01) {
+    if ((wu > 0.01 || sh > 0.01) && cur !== 'shove') {
       g.addRot('spine_01', X, -0.16 * wu + 0.2 * sh); g.addRot('spine_03', X, -0.08 * wu);
       for (const s2 of ['l', 'r']) {
         g.addRot('upperarm_' + s2, X, 0.8 * wu - 1.35 * sh);
