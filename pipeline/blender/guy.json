@@ -3,37 +3,57 @@
  "phenotype": {
   "gender": 1.0,
   "age": 0.5,
-  "muscle": 0.5,
-  "weight": 0.38,
+  "muscle": 0.64,
+  "weight": 0.42,
   "height": 0.55,
-  "proportions": 0.65,
+  "proportions": 0.9,
   "cupsize": 0.5,
   "firmness": 0.5,
   "race": {
-   "caucasian": 0.85,
-   "asian": 0.05,
-   "african": 0.1
+   "caucasian": 0.9,
+   "asian": 0.02,
+   "african": 0.08
   }
  },
  "targets": {
-  "measure-waist-circ-decr": 0.2
+  "measure-waist-circ-decr": 0.3,
+  "stomach-tone-incr": 0.3,
+  "torso-muscle-pectoral-incr": 0.2,
+  "head-square": 0.35,
+  "chin-prominent-incr": 0.25,
+  "chin-width-incr": 0.1,
+  "nose-hump-decr": 0.3,
+  "nose-scale-horiz-decr": 0.1,
+  "head-fat-decr": 0.3,
+  "mouth-lowerlip-volume-incr": 0.15,
+  "measure-neck-circ-incr": 0.15,
+  "eyebrows-trans-down": 0.1,
+  "head-age-decr": 0.2,
+  "l-cheek-bones-incr": 0.3,
+  "r-cheek-bones-incr": 0.3,
+  "l-cheek-volume-decr": 0.3,
+  "r-cheek-volume-decr": 0.3,
+  "l-upperarm-muscle-incr": 0.3,
+  "r-upperarm-muscle-incr": 0.3,
+  "l-upperarm-shoulder-muscle-incr": 0.3,
+  "r-upperarm-shoulder-muscle-incr": 0.3
  },
  "eyes": "high-poly.mhclo",
- "eyebrows": "eyebrow001.mhclo",
+ "eyebrows": "eyebrow009.mhclo",
  "eyelashes": "eyelashes01.mhclo",
  "teeth": "teeth_base.mhclo",
- "hair": "short04.mhclo",
- "skin": "young_caucasian_male.mhmat",
+ "hair": "short02.mhclo",
+ "skin": "young_caucasian_male2.mhmat",
  "skin_tint": [
-  1.0,
   0.95,
-  0.9,
+  0.85,
+  0.78,
   1.0
  ],
  "hair_tint": [
-  0.45,
-  0.38,
-  0.32
+  0.42,
+  0.32,
+  0.25
  ],
  "clothes": [
   "toigo_basic_tucked_t-shirt.mhclo",
@@ -63,15 +83,16 @@
    "rough": 0.85,
    "size": 1024
   },
-  "short04": {
+  "short02": {
    "name": "M_hair",
    "obj": "hair",
    "tint": [
-    0.5,
-    0.4,
-    0.33
+    0.42,
+    0.32,
+    0.25
    ],
-   "rough": 0.5,
+   "rough": 0.55,
+   "spec": 0.4,
    "alpha": true,
    "size": 1024
   }
@@ -146,12 +167,71 @@
     0.008,
     0.008,
     0.009
-   ]
+   ],
+   "clean_hem": 0.03,
+   "rough": 0.8,
+   "spec": 0.3
   }
  ],
  "zones": {
   "street_shirt": "top",
   "street_pants": "bottom",
   "street_shoes": "feet"
+ },
+ "lock_rig": "/workspace/bb3d/blender/rig_ref/guy_rig.json",
+ "skin_mat": {
+  "rough": 0.58,
+  "spec": 0.3,
+  "detail": {
+   "size": 1024,
+   "radius": 4,
+   "albedo": 6.0,
+   "pores": 0.05
+  },
+  "normal_strength": 0.6,
+  "sat": 0.9,
+  "paint": [
+   {
+    "group": "lips",
+    "mul": [
+     0.9,
+     0.75,
+     0.72
+    ],
+    "strength": 0.4,
+    "blur": 4
+   }
+  ],
+  "rough_map": {
+   "size": 512,
+   "detail": 1.5,
+   "noise": 0.05
+  }
+ },
+ "eye_mat": {
+  "tex": "brown",
+  "tint": [
+   0.72,
+   0.72,
+   0.78
+  ],
+  "rough": 0.1,
+  "spec": 0.25
+ },
+ "lash_tint": [
+  0.2,
+  0.2,
+  0.2
+ ],
+ "tuck": {
+  "top": 0.008,
+  "bottom": 0.004,
+  "feet": 0.003
+ },
+ "tuck_cover": {
+  "obj": "street_shirt",
+  "depth": 0.008,
+  "max_dist": 0.05,
+  "probe": []
  }
 }

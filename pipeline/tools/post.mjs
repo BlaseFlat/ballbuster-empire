@@ -1,9 +1,10 @@
 // Post-process exported GLB: rename clips to final names, add morph-weight (expression) channels + blinks.
 import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import fs from 'fs';
 const [inp, out, animjson, prefix] = process.argv.slice(2);
 const anim = JSON.parse(fs.readFileSync(animjson));
-const io = new NodeIO();
+const io = new NodeIO().registerExtensions(ALL_EXTENSIONS); // keep KHR_materials_* from the Blender export
 const doc = await io.read(inp);
 const root = doc.getRoot(); const buf = root.listBuffers()[0];
 const bodyNode = root.listNodes().find(n => n.getMesh() && /_body$/.test(n.getMesh().getName()));
